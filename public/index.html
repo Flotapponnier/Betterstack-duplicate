@@ -614,6 +614,7 @@
         if (data.success) {
           dashboardData = data;
           updateUI();
+          updateRefreshInterval();
         } else {
           showError(data.error);
         }
@@ -627,7 +628,12 @@
     function updateUI() {
       if (!dashboardData) return;
 
-      const { stats, monitors, categorized, incidents, lastUpdated } = dashboardData;
+      const { stats, monitors, categorized, incidents, lastUpdated, isLoading, loadingProgress } = dashboardData;
+      
+      // Show loading progress
+      if (isLoading) {
+        document.getElementById('lastUpdated').textContent = `Loading... ${loadingProgress.current} monitors`;
+      } else {
 
       // Update stats
       document.getElementById('statTotal').textContent = stats.total;
@@ -644,8 +650,9 @@
       document.getElementById('tabIncidentsCount').textContent = incidents.length;
 
       // Update last updated
-      const date = new Date(lastUpdated);
-      document.getElementById('lastUpdated').textContent = `Updated: ${date.toLocaleTimeString()}`;
+        const date = new Date(lastUpdated);
+        document.getElementById('lastUpdated').textContent = `Updated: ${date.toLocaleTimeString()}`;
+      }
 
       renderContent();
     }
@@ -805,8 +812,15 @@
       renderContent();
     });
 
-    // Auto-refresh every 60 seconds
-    setInterval(loadData, 60000);
+    // Auto-refresh every 5 seconds while loading, then every 60 seconds
+    let refreshInterval = setInterval(loadData, 5000);
+    
+    function updateRefreshInterval() {
+      if (dashboardData && !dashboardData.isLoading) {
+        clearInterval(refreshInterval);
+        refreshInterval = setInterval(loadData, 60000);
+      }
+    }
 
     // Initial load
     loadData();

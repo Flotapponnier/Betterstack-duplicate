@@ -13,45 +13,72 @@ app.use(cors());
 app.use(express.json());
 app.use(express.static(path.join(__dirname, "public")));
 
-// Fetch all monitors with pagination
-const fetchAllMonitors = async () => {
-  const allMonitors = [];
-  let currentPage = 1;
-  let hasMorePages = true;
+// Cache for monitors data - loads progressively
+let monitors = [];
+let incidents = [];
+let lastUpdated = null;
+let isLoading = false;
+let loadingProgress = { current: 0, total: 0 };
 
-  while (hasMorePages) {
-    const response = await fetch(`${BETTERSTACK_API_URL}/monitors?page=${currentPage}&per_page=50`, {
-      method: "GET",
-      headers: {
-        Authorization: `Bearer ${BETTERSTACK_API_TOKEN}`,
-      },
-    });
+// Build dashboard data from current monitors
+const buildDashboardData = () => {
+  const categorized = {
+    production: [],
+    staging: [],
+    other: [],
+  };
 
-    if (!response.ok) {
-      throw new Error(`Failed to fetch monitors: ${response.statusText}`);
-    }
-
-    const data = await response.json();
-    allMonitors.push(...data.data);
-
-    if (data.pagination && data.pagination.next) {
-      currentPage++;
+  monitors.forEach((monitor) => {
+    const url = monitor.attributes.url?.toLowerCase() || "";
+    if (url.includes("api-2.mobula.io") || url.includes("explorer-api-2.mobula.io")) {
+      categorized.production.push(monitor);
+    } else if (
+      url.includes("api.mobula.io") ||
+      url.includes("api.zobula.xyz") ||
+      url.includes("explorer-api.mobula.io") ||
+      url.includes("explorer-api.zobula.xyz")
+    ) {
+      categorized.staging.push(monitor);
     } else {
-      hasMorePages = false;
+      categorized.other.push(monitor);
     }
-  }
+  });
 
-  return allMonitors;
+  const stats = {
+    total: monitors.length,
+    up: monitors.filter((m) => m.attributes.status === "up").length,
+    down: monitors.filter((m) => m.attributes.status === "down").length,
+    paused: monitors.filter((m) => m.attributes.status === "paused").length,
+    validating: monitors.filter((m) => m.attributes.status === "validating").length,
+    production: {
+      total: categorized.production.length,
+      up: categorized.production.filter((m) => m.attributes.status === "up").length,
+      down: categorized.production.filter((m) => m.attributes.status === "down").length,
+    },
+    staging: {
+      total: categorized.staging.length,
+      up: categorized.staging.filter((m) => m.attributes.status === "up").length,
+      down: categorized.staging.filter((m) => m.attributes.status === "down").length,
+    },
+  };
+
+  return {
+    success: true,
+    stats,
+    monitors,
+    categorized,
+    incidents,
+    isLoading,
+    loadingProgress,
+    lastUpdated: lastUpdated || new Date().toISOString(),
+  };
 };
 
 // Fetch incidents
 const fetchIncidents = async () => {
-  const allIncidents = [];
-  let currentPage = 1;
-  let hasMorePages = true;
-
-  while (hasMorePages) {
-    const response = await fetch(`${BETTERSTACK_API_URL}/incidents?page=${currentPage}&per_page=50`, {
+  try {
+    console.log("📋 Fetching incidents...");
+    const response = await fetch(`${BETTERSTACK_API_URL}/incidents?per_page=50`, {
       method: "GET",
       headers: {
         Authorization: `Bearer ${BETTERSTACK_API_TOKEN}`,
@@ -59,158 +86,99 @@ const fetchIncidents = async () => {
     });
 
     if (!response.ok) {
-      throw new Error(`Failed to fetch incidents: ${response.statusText}`);
+      console.error("Failed to fetch incidents:", response.statusText);
+      return [];
     }
 
     const data = await response.json();
-    allIncidents.push(...data.data);
+    console.log(`✅ Fetched ${data.data.length} incidents`);
+    return data.data || [];
+  } catch (error) {
+    console.error("❌ Error fetching incidents:", error.message);
+    return [];
+  }
+};
 
-    if (data.pagination && data.pagination.next) {
-      currentPage++;
-    } else {
-      hasMorePages = false;
+// Fetch monitors page by page, updating cache progressively
+const fetchMonitorsProgressively = async () => {
+  if (isLoading) return;
+  isLoading = true;
+  monitors = []; // Reset
+  loadingProgress = { current: 0, total: 0 };
+  
+  let currentPage = 1;
+  
+  try {
+    while (true) {
+      console.log(`📦 Fetching page ${currentPage}...`);
+      
+      const response = await fetch(`${BETTERSTACK_API_URL}/monitors?page=${currentPage}&per_page=50`, {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${BETTERSTACK_API_TOKEN}`,
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to fetch monitors: ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      
+      // Add new monitors to cache immediately
+      monitors.push(...data.data);
+      loadingProgress.current = monitors.length;
+      
+      // Estimate total from pagination
+      if (data.pagination) {
+        // BetterStack doesn't give total, estimate from pages
+        loadingProgress.total = data.pagination.next ? monitors.length + 50 : monitors.length;
+      }
+      
+      console.log(`✅ Page ${currentPage}: +${data.data.length} monitors (total: ${monitors.length})`);
+      lastUpdated = new Date().toISOString();
+
+      if (data.pagination && data.pagination.next) {
+        currentPage++;
+        // Small delay to avoid rate limiting
+        await new Promise(r => setTimeout(r, 100));
+      } else {
+        break;
+      }
     }
+    
+    console.log(`🎉 Finished loading ${monitors.length} monitors`);
+    
+    // Fetch incidents after monitors
+    incidents = await fetchIncidents();
+  } catch (error) {
+    console.error("❌ Error fetching monitors:", error.message);
+  } finally {
+    isLoading = false;
+    loadingProgress.total = monitors.length;
   }
-
-  return allIncidents;
-};
-
-// Fetch monitor groups
-const fetchMonitorGroups = async () => {
-  const response = await fetch(`${BETTERSTACK_API_URL}/monitor-groups`, {
-    method: "GET",
-    headers: {
-      Authorization: `Bearer ${BETTERSTACK_API_TOKEN}`,
-    },
-  });
-
-  if (!response.ok) {
-    throw new Error(`Failed to fetch monitor groups: ${response.statusText}`);
-  }
-
-  const data = await response.json();
-  return data.data || [];
-};
-
-// Fetch heartbeats
-const fetchHeartbeats = async () => {
-  const response = await fetch(`${BETTERSTACK_API_URL}/heartbeats`, {
-    method: "GET",
-    headers: {
-      Authorization: `Bearer ${BETTERSTACK_API_TOKEN}`,
-    },
-  });
-
-  if (!response.ok) {
-    throw new Error(`Failed to fetch heartbeats: ${response.statusText}`);
-  }
-
-  const data = await response.json();
-  return data.data || [];
 };
 
 // API Routes
-app.get("/api/monitors", async (req, res) => {
-  try {
-    const monitors = await fetchAllMonitors();
-    res.json({ success: true, data: monitors, count: monitors.length });
-  } catch (error) {
-    res.status(500).json({ success: false, error: error.message });
-  }
+app.get("/api/dashboard", (req, res) => {
+  res.json(buildDashboardData());
 });
 
-app.get("/api/incidents", async (req, res) => {
-  try {
-    const incidents = await fetchIncidents();
-    res.json({ success: true, data: incidents, count: incidents.length });
-  } catch (error) {
-    res.status(500).json({ success: false, error: error.message });
-  }
+app.get("/api/status", (req, res) => {
+  res.json({
+    monitorsCount: monitors.length,
+    isLoading,
+    loadingProgress,
+    lastUpdated,
+  });
 });
 
-app.get("/api/monitor-groups", async (req, res) => {
-  try {
-    const groups = await fetchMonitorGroups();
-    res.json({ success: true, data: groups, count: groups.length });
-  } catch (error) {
-    res.status(500).json({ success: false, error: error.message });
+// Force refresh endpoint
+app.post("/api/refresh", (req, res) => {
+  if (!isLoading) {
+    fetchMonitorsProgressively();
   }
-});
-
-app.get("/api/heartbeats", async (req, res) => {
-  try {
-    const heartbeats = await fetchHeartbeats();
-    res.json({ success: true, data: heartbeats, count: heartbeats.length });
-  } catch (error) {
-    res.status(500).json({ success: false, error: error.message });
-  }
-});
-
-// Get all data at once
-app.get("/api/dashboard", async (req, res) => {
-  try {
-    const [monitors, incidents, groups, heartbeats] = await Promise.all([
-      fetchAllMonitors(),
-      fetchIncidents().catch(() => []),
-      fetchMonitorGroups().catch(() => []),
-      fetchHeartbeats().catch(() => []),
-    ]);
-
-    // Categorize monitors
-    const categorized = {
-      production: [],
-      staging: [],
-      other: [],
-    };
-
-    monitors.forEach((monitor) => {
-      const url = monitor.attributes.url?.toLowerCase() || "";
-      if (url.includes("api-2.mobula.io") || url.includes("explorer-api-2.mobula.io")) {
-        categorized.production.push(monitor);
-      } else if (
-        url.includes("api.mobula.io") ||
-        url.includes("api.zobula.xyz") ||
-        url.includes("explorer-api.mobula.io") ||
-        url.includes("explorer-api.zobula.xyz")
-      ) {
-        categorized.staging.push(monitor);
-      } else {
-        categorized.other.push(monitor);
-      }
-    });
-
-    // Calculate stats
-    const stats = {
-      total: monitors.length,
-      up: monitors.filter((m) => m.attributes.status === "up").length,
-      down: monitors.filter((m) => m.attributes.status === "down").length,
-      paused: monitors.filter((m) => m.attributes.status === "paused").length,
-      validating: monitors.filter((m) => m.attributes.status === "validating").length,
-      production: {
-        total: categorized.production.length,
-        up: categorized.production.filter((m) => m.attributes.status === "up").length,
-        down: categorized.production.filter((m) => m.attributes.status === "down").length,
-      },
-      staging: {
-        total: categorized.staging.length,
-        up: categorized.staging.filter((m) => m.attributes.status === "up").length,
-        down: categorized.staging.filter((m) => m.attributes.status === "down").length,
-      },
-    };
-
-    res.json({
-      success: true,
-      stats,
-      monitors,
-      categorized,
-      incidents: incidents.slice(0, 50), // Last 50 incidents
-      groups,
-      heartbeats,
-      lastUpdated: new Date().toISOString(),
-    });
-  } catch (error) {
-    res.status(500).json({ success: false, error: error.message });
-  }
+  res.json({ success: true, message: isLoading ? "Already loading" : "Refresh started" });
 });
 
 // Serve frontend
@@ -218,7 +186,9 @@ app.get("/", (req, res) => {
   res.sendFile(path.join(__dirname, "public", "index.html"));
 });
 
+// Start server and preload cache
 app.listen(PORT, () => {
   console.log(`🚀 BetterStack Dashboard running at http://localhost:${PORT}`);
+  console.log("📦 Starting progressive load...");
+  fetchMonitorsProgressively();
 });
-
