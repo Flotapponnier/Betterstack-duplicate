@@ -2,6 +2,7 @@ require("dotenv").config();
 const express = require("express");
 const cors = require("cors");
 const path = require("path");
+const database = require("./database");
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -13,13 +14,26 @@ app.use(cors());
 app.use(express.json());
 app.use(express.static(path.join(__dirname, "public")));
 
-// Cache for monitors data - loads progressively
+// In-memory cache (loaded from DB on startup)
 let monitors = [];
 let incidents = [];
-let statusChanges = []; // Feed of status changes
+let statusChanges = [];
 let lastUpdated = null;
 let isLoading = false;
 let loadingProgress = { current: 0, total: 0 };
+
+// Load data from database on startup
+const loadFromDatabase = () => {
+  if (database.hasData()) {
+    monitors = database.getMonitors();
+    incidents = database.getIncidents();
+    statusChanges = database.getStatusChanges();
+    lastUpdated = database.getLastUpdated();
+    console.log(`📂 Loaded from database: ${monitors.length} monitors, ${incidents.length} incidents`);
+    return true;
+  }
+  return false;
+};
 
 // Build dashboard data from current monitors
 const buildDashboardData = () => {
@@ -82,7 +96,7 @@ const fetchIncidents = async () => {
     const allIncidents = [];
     let page = 1;
     
-    while (page <= 5) { // Max 5 pages
+    while (page <= 5) {
       const response = await fetch(`${BETTERSTACK_API_URL}/incidents?per_page=50&page=${page}`, {
         method: "GET",
         headers: {
@@ -117,7 +131,7 @@ const fetchStatusChanges = async () => {
     const allChanges = [];
     let page = 1;
     
-    while (page <= 3) { // Max 3 pages
+    while (page <= 3) {
       const response = await fetch(`${BETTERSTACK_API_URL}/status-changes?per_page=100&page=${page}`, {
         method: "GET",
         headers: {
@@ -145,29 +159,11 @@ const fetchStatusChanges = async () => {
   }
 };
 
-// Fetch monitor SLA (uptime percentage over time)
-const fetchMonitorSLA = async (monitorId) => {
-  try {
-    const response = await fetch(`${BETTERSTACK_API_URL}/monitors/${monitorId}/sla`, {
-      method: "GET",
-      headers: {
-        Authorization: `Bearer ${BETTERSTACK_API_TOKEN}`,
-      },
-    });
-
-    if (!response.ok) return null;
-    const data = await response.json();
-    return data.data;
-  } catch (error) {
-    return null;
-  }
-};
-
 // Fetch monitors page by page, updating cache progressively
 const fetchMonitorsProgressively = async () => {
   if (isLoading) return;
   isLoading = true;
-  monitors = []; // Reset
+  const newMonitors = [];
   loadingProgress = { current: 0, total: 0 };
   
   let currentPage = 1;
@@ -189,33 +185,45 @@ const fetchMonitorsProgressively = async () => {
 
       const data = await response.json();
       
-      // Add new monitors to cache immediately
-      monitors.push(...data.data);
-      loadingProgress.current = monitors.length;
+      // Add new monitors to temp array
+      newMonitors.push(...data.data);
+      loadingProgress.current = newMonitors.length;
       
       // Estimate total from pagination
       if (data.pagination) {
-        // BetterStack doesn't give total, estimate from pages
-        loadingProgress.total = data.pagination.next ? monitors.length + 50 : monitors.length;
+        loadingProgress.total = data.pagination.next ? newMonitors.length + 50 : newMonitors.length;
       }
       
-      console.log(`✅ Page ${currentPage}: +${data.data.length} monitors (total: ${monitors.length})`);
-      lastUpdated = new Date().toISOString();
+      console.log(`✅ Page ${currentPage}: +${data.data.length} monitors (total: ${newMonitors.length})`);
 
       if (data.pagination && data.pagination.next) {
         currentPage++;
-        // Small delay to avoid rate limiting
         await new Promise(r => setTimeout(r, 100));
       } else {
         break;
       }
     }
     
-    console.log(`🎉 Finished loading ${monitors.length} monitors`);
+    // Update in-memory cache
+    monitors = newMonitors;
+    lastUpdated = new Date().toISOString();
+    
+    // Save to database
+    database.saveMonitors(monitors);
+    
+    // Record daily status for heatmap tracking
+    database.recordAllDailyStatus(monitors);
+    console.log(`🎉 Finished loading ${monitors.length} monitors (saved to DB + daily status recorded)`);
     
     // Fetch incidents and status changes after monitors
-    incidents = await fetchIncidents();
-    statusChanges = await fetchStatusChanges();
+    const newIncidents = await fetchIncidents();
+    incidents = newIncidents;
+    database.saveIncidents(incidents);
+    
+    const newStatusChanges = await fetchStatusChanges();
+    statusChanges = newStatusChanges;
+    database.saveStatusChanges(statusChanges);
+    
   } catch (error) {
     console.error("❌ Error fetching monitors:", error.message);
   } finally {
@@ -225,8 +233,17 @@ const fetchMonitorsProgressively = async () => {
 };
 
 // API Routes
+
+// Dashboard endpoint - triggers refresh in background on each visit
 app.get("/api/dashboard", (req, res) => {
+  // Return cached data immediately
   res.json(buildDashboardData());
+  
+  // Trigger background refresh if not already loading
+  if (!isLoading) {
+    console.log("🔄 Visitor triggered background refresh...");
+    fetchMonitorsProgressively();
+  }
 });
 
 app.get("/api/status", (req, res) => {
@@ -248,7 +265,6 @@ app.post("/api/refresh", (req, res) => {
 
 // Feed endpoint - status changes and incidents combined
 app.get("/api/feed", (req, res) => {
-  // Combine status changes and incidents into a unified feed
   const feed = [];
   
   // Add status changes
@@ -284,24 +300,62 @@ app.get("/api/feed", (req, res) => {
   res.json({ success: true, data: feed.slice(0, 200), count: feed.length });
 });
 
-// Heatmap data endpoint - uptime for last 30 days
-app.get("/api/heatmap", async (req, res) => {
-  // Build heatmap from incidents and status changes
-  const heatmapData = {};
+// Heatmap data endpoint - uses our own tracking from daily_status table
+app.get("/api/heatmap", (req, res) => {
   const now = new Date();
-  const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+  const today = now.toISOString().split('T')[0];
   
-  // Initialize all monitors with 30 days of "up" status
+  // Get tracked daily status from database
+  const dailyStatusByMonitor = database.getDailyStatusForHeatmap(30);
+  
+  // Build heatmap data for each monitor
+  const heatmapData = {};
+  
   monitors.forEach(monitor => {
+    // Generate last 30 days
     const days = [];
     for (let i = 29; i >= 0; i--) {
       const date = new Date(now.getTime() - i * 24 * 60 * 60 * 1000);
-      days.push({
-        date: date.toISOString().split('T')[0],
-        status: 'up',
-        downtime: 0,
-      });
+      const dateStr = date.toISOString().split('T')[0];
+      
+      // Check if we have tracked data for this day
+      const trackedDays = dailyStatusByMonitor[monitor.id] || [];
+      const trackedDay = trackedDays.find(d => d.date === dateStr);
+      
+      if (trackedDay) {
+        // We have real data from our tracking
+        const failRate = trackedDay.checksTotal > 0 
+          ? trackedDay.checksFailed / trackedDay.checksTotal 
+          : 0;
+        
+        let status = 'up';
+        if (failRate >= 0.5) {
+          status = 'down'; // More than 50% checks failed
+        } else if (failRate > 0) {
+          status = 'partial'; // Some checks failed
+        }
+        
+        days.push({
+          date: dateStr,
+          status,
+          downtime: trackedDay.downtimeMinutes,
+          checksTotal: trackedDay.checksTotal,
+          checksFailed: trackedDay.checksFailed,
+          failRate: Math.round(failRate * 100),
+        });
+      } else {
+        // No data for this day (before we started tracking)
+        days.push({
+          date: dateStr,
+          status: 'unknown',
+          downtime: 0,
+          checksTotal: 0,
+          checksFailed: 0,
+          failRate: 0,
+        });
+      }
     }
+    
     heatmapData[monitor.id] = {
       id: monitor.id,
       name: monitor.attributes?.pronounceable_name || monitor.attributes?.url,
@@ -309,33 +363,6 @@ app.get("/api/heatmap", async (req, res) => {
       currentStatus: monitor.attributes?.status,
       days,
     };
-  });
-  
-  // Mark days with incidents as down
-  incidents.forEach(incident => {
-    const monitorId = incident.relationships?.monitor?.data?.id;
-    if (!monitorId || !heatmapData[monitorId]) return;
-    
-    const startDate = new Date(incident.attributes?.started_at);
-    const endDate = incident.attributes?.resolved_at 
-      ? new Date(incident.attributes.resolved_at) 
-      : now;
-    
-    if (startDate < thirtyDaysAgo) return;
-    
-    heatmapData[monitorId].days.forEach(day => {
-      const dayDate = new Date(day.date);
-      const dayEnd = new Date(dayDate.getTime() + 24 * 60 * 60 * 1000);
-      
-      // Check if incident overlaps with this day
-      if (startDate < dayEnd && endDate > dayDate) {
-        day.status = 'down';
-        // Calculate downtime in minutes for this day
-        const overlapStart = Math.max(startDate.getTime(), dayDate.getTime());
-        const overlapEnd = Math.min(endDate.getTime(), dayEnd.getTime());
-        day.downtime += Math.round((overlapEnd - overlapStart) / (1000 * 60));
-      }
-    });
   });
   
   // Convert to array and sort by current status (down first) then by name
@@ -354,9 +381,49 @@ app.get("/", (req, res) => {
   res.sendFile(path.join(__dirname, "public", "index.html"));
 });
 
-// Start server and preload cache
+// Graceful shutdown
+process.on('SIGINT', () => {
+  console.log('\n👋 Shutting down...');
+  database.close();
+  process.exit(0);
+});
+
+process.on('SIGTERM', () => {
+  console.log('\n👋 Shutting down...');
+  database.close();
+  process.exit(0);
+});
+
+// Auto-refresh interval (5 minutes)
+const REFRESH_INTERVAL_MS = 5 * 60 * 1000;
+
+const startAutoRefresh = () => {
+  setInterval(() => {
+    if (!isLoading) {
+      console.log("⏰ Auto-refresh triggered (every 5 min)...");
+      fetchMonitorsProgressively();
+    }
+  }, REFRESH_INTERVAL_MS);
+  console.log(`⏰ Auto-refresh enabled: every ${REFRESH_INTERVAL_MS / 1000 / 60} minutes`);
+};
+
+// Start server
 app.listen(PORT, () => {
   console.log(`🚀 BetterStack Dashboard running at http://localhost:${PORT}`);
-  console.log("📦 Starting progressive load...");
-  fetchMonitorsProgressively();
+  
+  // Load from database first
+  const hasData = loadFromDatabase();
+  
+  if (hasData) {
+    console.log("✅ Data loaded from database - ready to serve!");
+    // Still trigger a background refresh to get latest data
+    console.log("🔄 Starting background refresh for latest data...");
+    fetchMonitorsProgressively();
+  } else {
+    console.log("📦 No data in database - starting initial load...");
+    fetchMonitorsProgressively();
+  }
+  
+  // Start auto-refresh
+  startAutoRefresh();
 });
