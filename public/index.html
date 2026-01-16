@@ -491,6 +491,210 @@
       margin-bottom: 2rem;
     }
 
+    /* Heatmap Styles */
+    .heatmap-container {
+      overflow-x: auto;
+    }
+
+    .heatmap-row {
+      display: flex;
+      align-items: center;
+      gap: 0.25rem;
+      margin-bottom: 0.25rem;
+      padding: 0.5rem;
+      background: var(--bg-card);
+      border-radius: 0.5rem;
+      border: 1px solid var(--border);
+    }
+
+    .heatmap-row:hover {
+      border-color: var(--accent);
+    }
+
+    .heatmap-name {
+      width: 250px;
+      min-width: 250px;
+      font-size: 0.8rem;
+      font-weight: 500;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      padding-right: 1rem;
+    }
+
+    .heatmap-days {
+      display: flex;
+      gap: 2px;
+      flex: 1;
+    }
+
+    .heatmap-day {
+      width: 14px;
+      height: 14px;
+      border-radius: 2px;
+      cursor: pointer;
+      transition: transform 0.1s;
+    }
+
+    .heatmap-day:hover {
+      transform: scale(1.5);
+      z-index: 10;
+    }
+
+    .heatmap-day.up {
+      background: var(--success);
+    }
+
+    .heatmap-day.down {
+      background: var(--danger);
+    }
+
+    .heatmap-day.partial {
+      background: var(--warning);
+    }
+
+    .heatmap-day.unknown {
+      background: var(--border);
+    }
+
+    .heatmap-current {
+      width: 60px;
+      min-width: 60px;
+      text-align: center;
+    }
+
+    .heatmap-legend {
+      display: flex;
+      gap: 1.5rem;
+      margin-bottom: 1.5rem;
+      padding: 1rem;
+      background: var(--bg-card);
+      border-radius: 0.5rem;
+      border: 1px solid var(--border);
+    }
+
+    .heatmap-legend-item {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-size: 0.8rem;
+      color: var(--text-secondary);
+    }
+
+    .heatmap-legend-color {
+      width: 14px;
+      height: 14px;
+      border-radius: 2px;
+    }
+
+    .heatmap-header {
+      display: flex;
+      align-items: center;
+      gap: 0.25rem;
+      margin-bottom: 0.5rem;
+      padding-left: 260px;
+    }
+
+    .heatmap-header-day {
+      width: 14px;
+      font-size: 0.6rem;
+      text-align: center;
+      color: var(--text-muted);
+    }
+
+    /* Feed Styles */
+    .feed-container {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+
+    .feed-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 1rem;
+      padding: 1rem;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 0.75rem;
+      transition: all 0.2s;
+    }
+
+    .feed-item:hover {
+      border-color: var(--accent);
+    }
+
+    .feed-icon {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1rem;
+      flex-shrink: 0;
+    }
+
+    .feed-icon.down {
+      background: var(--danger-bg);
+      color: var(--danger);
+    }
+
+    .feed-icon.up {
+      background: var(--success-bg);
+      color: var(--success);
+    }
+
+    .feed-icon.incident {
+      background: var(--warning-bg);
+      color: var(--warning);
+    }
+
+    .feed-content {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .feed-title {
+      font-weight: 600;
+      font-size: 0.95rem;
+      margin-bottom: 0.25rem;
+    }
+
+    .feed-subtitle {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      font-family: 'JetBrains Mono', monospace;
+      word-break: break-all;
+    }
+
+    .feed-time {
+      font-size: 0.75rem;
+      color: var(--text-secondary);
+      font-family: 'JetBrains Mono', monospace;
+      white-space: nowrap;
+    }
+
+    .feed-status-badge {
+      display: inline-block;
+      padding: 0.125rem 0.5rem;
+      border-radius: 999px;
+      font-size: 0.7rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      margin-left: 0.5rem;
+    }
+
+    .feed-status-badge.down {
+      background: var(--danger-bg);
+      color: var(--danger);
+    }
+
+    .feed-status-badge.up {
+      background: var(--success-bg);
+      color: var(--success);
+    }
+
     @media (max-width: 768px) {
       .container {
         padding: 1rem;
@@ -576,6 +780,12 @@
         Incidents
         <span class="tab-badge" id="tabIncidentsCount">0</span>
       </button>
+      <button class="tab" data-tab="heatmap">
+        🔥 Heatmap
+      </button>
+      <button class="tab" data-tab="feed">
+        📰 Feed
+      </button>
     </div>
 
     <div class="search-filter">
@@ -599,6 +809,8 @@
 
   <script>
     let dashboardData = null;
+    let heatmapData = null;
+    let feedData = null;
     let currentTab = 'all';
     let searchQuery = '';
     let statusFilter = 'all';
@@ -662,6 +874,16 @@
       
       if (currentTab === 'incidents') {
         renderIncidents();
+        return;
+      }
+
+      if (currentTab === 'heatmap') {
+        renderHeatmap();
+        return;
+      }
+
+      if (currentTab === 'feed') {
+        renderFeed();
         return;
       }
 
@@ -771,6 +993,167 @@
           }).join('')}
         </div>
       `;
+    }
+
+    async function renderHeatmap() {
+      const content = document.getElementById('content');
+      
+      // Show loading if no data yet
+      if (!heatmapData) {
+        content.innerHTML = '<div class="loading-state"><div class="loading-spinner"></div><p>Loading heatmap data...</p></div>';
+        
+        try {
+          const response = await fetch('/api/heatmap');
+          const data = await response.json();
+          if (data.success) {
+            heatmapData = data.data;
+          }
+        } catch (error) {
+          content.innerHTML = '<div class="error-state">Failed to load heatmap</div>';
+          return;
+        }
+      }
+
+      if (!heatmapData || heatmapData.length === 0) {
+        content.innerHTML = '<div class="empty-state">No heatmap data available</div>';
+        return;
+      }
+
+      // Generate day headers
+      const dayHeaders = [];
+      for (let i = 29; i >= 0; i--) {
+        const date = new Date(Date.now() - i * 24 * 60 * 60 * 1000);
+        dayHeaders.push(date.getDate());
+      }
+
+      content.innerHTML = `
+        <div class="heatmap-legend">
+          <div class="heatmap-legend-item">
+            <div class="heatmap-legend-color" style="background: var(--success);"></div>
+            <span>Operational</span>
+          </div>
+          <div class="heatmap-legend-item">
+            <div class="heatmap-legend-color" style="background: var(--warning);"></div>
+            <span>Partial outage</span>
+          </div>
+          <div class="heatmap-legend-item">
+            <div class="heatmap-legend-color" style="background: var(--danger);"></div>
+            <span>Down</span>
+          </div>
+          <div class="heatmap-legend-item">
+            <div class="heatmap-legend-color" style="background: var(--border);"></div>
+            <span>No data</span>
+          </div>
+        </div>
+        <div class="heatmap-header">
+          ${dayHeaders.map(d => `<div class="heatmap-header-day">${d}</div>`).join('')}
+        </div>
+        <div class="heatmap-container">
+          ${heatmapData.map(monitor => `
+            <div class="heatmap-row">
+              <div class="heatmap-name" title="${escapeHtml(monitor.name)}">${escapeHtml(monitor.name)}</div>
+              <div class="heatmap-days">
+                ${monitor.days.map(day => {
+                  let statusClass = day.status;
+                  if (day.downtime > 0 && day.downtime < 1440) statusClass = 'partial';
+                  const tooltip = day.status === 'down' || day.downtime > 0 
+                    ? `${day.date}: ${day.downtime}min downtime` 
+                    : `${day.date}: Operational`;
+                  return `<div class="heatmap-day ${statusClass}" title="${tooltip}"></div>`;
+                }).join('')}
+              </div>
+              <div class="heatmap-current">
+                <span class="monitor-status ${monitor.currentStatus}">
+                  <span class="status-dot"></span>
+                  ${monitor.currentStatus}
+                </span>
+              </div>
+            </div>
+          `).join('')}
+        </div>
+      `;
+    }
+
+    async function renderFeed() {
+      const content = document.getElementById('content');
+      
+      // Show loading if no data yet
+      if (!feedData) {
+        content.innerHTML = '<div class="loading-state"><div class="loading-spinner"></div><p>Loading feed...</p></div>';
+        
+        try {
+          const response = await fetch('/api/feed');
+          const data = await response.json();
+          if (data.success) {
+            feedData = data.data;
+          }
+        } catch (error) {
+          content.innerHTML = '<div class="error-state">Failed to load feed</div>';
+          return;
+        }
+      }
+
+      if (!feedData || feedData.length === 0) {
+        content.innerHTML = '<div class="empty-state">No events recorded yet</div>';
+        return;
+      }
+
+      content.innerHTML = `
+        <div class="feed-container">
+          ${feedData.slice(0, 100).map(item => {
+            if (item.type === 'status_change') {
+              const icon = item.status === 'down' ? '🔴' : '🟢';
+              const iconClass = item.status === 'down' ? 'down' : 'up';
+              const action = item.status === 'down' ? 'went down' : 'recovered';
+              return `
+                <div class="feed-item">
+                  <div class="feed-icon ${iconClass}">${icon}</div>
+                  <div class="feed-content">
+                    <div class="feed-title">
+                      ${escapeHtml(item.monitorName)}
+                      <span class="feed-status-badge ${item.status}">${item.status}</span>
+                    </div>
+                    <div class="feed-subtitle">${escapeHtml(item.monitorUrl)}</div>
+                  </div>
+                  <div class="feed-time">${formatTimeAgo(item.timestamp)}</div>
+                </div>
+              `;
+            } else if (item.type === 'incident') {
+              return `
+                <div class="feed-item">
+                  <div class="feed-icon incident">⚠️</div>
+                  <div class="feed-content">
+                    <div class="feed-title">
+                      Incident: ${escapeHtml(item.name || 'Unknown')}
+                      <span class="feed-status-badge ${item.status}">${item.status}</span>
+                    </div>
+                    <div class="feed-subtitle">${item.cause ? escapeHtml(item.cause) : 'No details'}</div>
+                  </div>
+                  <div class="feed-time">${formatTimeAgo(item.timestamp)}</div>
+                </div>
+              `;
+            }
+            return '';
+          }).join('')}
+        </div>
+      `;
+    }
+
+    function formatTimeAgo(timestamp) {
+      if (!timestamp) return 'N/A';
+      const now = new Date();
+      const date = new Date(timestamp);
+      const diff = now - date;
+      
+      const minutes = Math.floor(diff / 60000);
+      const hours = Math.floor(diff / 3600000);
+      const days = Math.floor(diff / 86400000);
+      
+      if (minutes < 1) return 'just now';
+      if (minutes < 60) return `${minutes}m ago`;
+      if (hours < 24) return `${hours}h ago`;
+      if (days < 7) return `${days}d ago`;
+      return date.toLocaleDateString();
     }
 
     function showError(message) {
