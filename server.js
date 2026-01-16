@@ -2,17 +2,49 @@ require("dotenv").config();
 const express = require("express");
 const cors = require("cors");
 const path = require("path");
+const session = require("express-session");
 const database = require("./database");
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// Auth credentials from environment
+const AUTH_USERNAME = process.env.AUTH_USERNAME || "admin";
+const AUTH_PASSWORD = process.env.AUTH_PASSWORD || "admin";
+const SESSION_SECRET = process.env.SESSION_SECRET || "betterstack-dashboard-secret-change-me";
+
 const BETTERSTACK_API_TOKEN = process.env.BETTERSTACK_API_TOKEN;
 const BETTERSTACK_API_URL = "https://uptime.betterstack.com/api/v2";
+const BETTERSTACK_TEAM_ID = process.env.BETTERSTACK_TEAM_ID || "t161704";
 
 app.use(cors());
 app.use(express.json());
-app.use(express.static(path.join(__dirname, "public")));
+app.use(express.urlencoded({ extended: true }));
+
+// Session middleware
+app.use(session({
+  secret: SESSION_SECRET,
+  resave: false,
+  saveUninitialized: false,
+  cookie: { 
+    secure: process.env.NODE_ENV === 'production' && process.env.HTTPS === 'true',
+    httpOnly: true,
+    maxAge: 24 * 60 * 60 * 1000 // 24 hours
+  }
+}));
+
+// Auth middleware - check if user is authenticated
+const requireAuth = (req, res, next) => {
+  if (req.session && req.session.authenticated) {
+    return next();
+  }
+  // For API calls, return 401
+  if (req.path.startsWith('/api/')) {
+    return res.status(401).json({ error: 'Unauthorized', message: 'Please login first' });
+  }
+  // For page requests, redirect to login
+  res.redirect('/login');
+};
 
 // In-memory cache (loaded from DB on startup)
 let monitors = [];
@@ -89,7 +121,7 @@ const buildDashboardData = () => {
   };
 };
 
-// Fetch incidents
+// Fetch incidents with full details
 const fetchIncidents = async () => {
   try {
     console.log("📋 Fetching incidents...");
@@ -232,10 +264,61 @@ const fetchMonitorsProgressively = async () => {
   }
 };
 
-// API Routes
+// ============== AUTH ROUTES ==============
+
+// Login page
+app.get("/login", (req, res) => {
+  if (req.session && req.session.authenticated) {
+    return res.redirect('/');
+  }
+  res.sendFile(path.join(__dirname, "public", "login.html"));
+});
+
+// Login POST
+app.post("/api/login", (req, res) => {
+  const { username, password } = req.body;
+  
+  if (username === AUTH_USERNAME && password === AUTH_PASSWORD) {
+    req.session.authenticated = true;
+    req.session.username = username;
+    res.json({ success: true, message: 'Login successful' });
+  } else {
+    res.status(401).json({ success: false, message: 'Invalid credentials' });
+  }
+});
+
+// Logout
+app.post("/api/logout", (req, res) => {
+  req.session.destroy((err) => {
+    if (err) {
+      return res.status(500).json({ success: false, message: 'Logout failed' });
+    }
+    res.json({ success: true, message: 'Logged out' });
+  });
+});
+
+// Check auth status
+app.get("/api/auth/status", (req, res) => {
+  res.json({ 
+    authenticated: !!(req.session && req.session.authenticated),
+    username: req.session?.username || null
+  });
+});
+
+// Get config (team ID for BetterStack links)
+app.get("/api/config", requireAuth, (req, res) => {
+  res.json({
+    betterStackTeamId: BETTERSTACK_TEAM_ID,
+  });
+});
+
+// ============== PROTECTED ROUTES ==============
+
+// Serve static files (but protect the main app)
+app.use(express.static(path.join(__dirname, "public")));
 
 // Dashboard endpoint - triggers refresh in background on each visit
-app.get("/api/dashboard", (req, res) => {
+app.get("/api/dashboard", requireAuth, (req, res) => {
   // Return cached data immediately
   res.json(buildDashboardData());
   
@@ -246,7 +329,7 @@ app.get("/api/dashboard", (req, res) => {
   }
 });
 
-app.get("/api/status", (req, res) => {
+app.get("/api/status", requireAuth, (req, res) => {
   res.json({
     monitorsCount: monitors.length,
     isLoading,
@@ -256,7 +339,7 @@ app.get("/api/status", (req, res) => {
 });
 
 // Force refresh endpoint
-app.post("/api/refresh", (req, res) => {
+app.post("/api/refresh", requireAuth, (req, res) => {
   if (!isLoading) {
     fetchMonitorsProgressively();
   }
@@ -264,10 +347,10 @@ app.post("/api/refresh", (req, res) => {
 });
 
 // Feed endpoint - status changes and incidents combined
-app.get("/api/feed", (req, res) => {
+app.get("/api/feed", requireAuth, (req, res) => {
   const feed = [];
   
-  // Add status changes
+  // Add status changes with monitor details
   statusChanges.forEach(change => {
     const monitor = monitors.find(m => m.id === change.relationships?.monitor?.data?.id);
     feed.push({
@@ -278,11 +361,16 @@ app.get("/api/feed", (req, res) => {
       monitorId: change.relationships?.monitor?.data?.id,
       monitorName: monitor?.attributes?.pronounceable_name || 'Unknown',
       monitorUrl: monitor?.attributes?.url || '',
+      // Additional details
+      responseTime: change.attributes?.response_time,
+      responseCode: change.attributes?.response_code,
+      responseBody: change.attributes?.response_body,
     });
   });
   
-  // Add incidents
+  // Add incidents with full details
   incidents.forEach(incident => {
+    const monitor = monitors.find(m => m.id === incident.relationships?.monitor?.data?.id);
     feed.push({
       type: 'incident',
       id: incident.id,
@@ -291,6 +379,18 @@ app.get("/api/feed", (req, res) => {
       name: incident.attributes?.name,
       cause: incident.attributes?.cause,
       resolvedAt: incident.attributes?.resolved_at,
+      acknowledgedAt: incident.attributes?.acknowledged_at,
+      acknowledgedBy: incident.attributes?.acknowledged_by,
+      // Monitor details
+      monitorId: incident.relationships?.monitor?.data?.id,
+      monitorName: monitor?.attributes?.pronounceable_name || 'Unknown',
+      monitorUrl: monitor?.attributes?.url || '',
+      // Response details
+      responseContent: incident.attributes?.response_content,
+      responseOptions: incident.attributes?.response_options,
+      httpMethod: incident.attributes?.http_method,
+      // Screenshot if available
+      screenshotUrl: incident.attributes?.screenshot_url,
     });
   });
   
@@ -300,10 +400,57 @@ app.get("/api/feed", (req, res) => {
   res.json({ success: true, data: feed.slice(0, 200), count: feed.length });
 });
 
+// Proxy endpoint to test monitor URLs with auth headers
+app.post("/api/proxy", requireAuth, async (req, res) => {
+  const { url, authValue } = req.body;
+  
+  if (!url) {
+    return res.status(400).json({ success: false, error: 'URL is required' });
+  }
+  
+  try {
+    const headers = {};
+    if (authValue) {
+      headers['Authorization'] = authValue;
+    }
+    
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 30000); // 30s timeout
+    
+    const response = await fetch(url, {
+      method: 'GET',
+      headers,
+      signal: controller.signal,
+    });
+    
+    clearTimeout(timeout);
+    
+    const contentType = response.headers.get('content-type') || '';
+    let body;
+    
+    if (contentType.includes('application/json')) {
+      body = await response.json();
+    } else {
+      body = await response.text();
+    }
+    
+    res.json({
+      success: true,
+      status: response.status,
+      statusText: response.statusText,
+      body,
+    });
+  } catch (error) {
+    res.json({
+      success: false,
+      error: error.name === 'AbortError' ? 'Request timeout (30s)' : error.message,
+    });
+  }
+});
+
 // Heatmap data endpoint - uses our own tracking from daily_status table
-app.get("/api/heatmap", (req, res) => {
+app.get("/api/heatmap", requireAuth, (req, res) => {
   const now = new Date();
-  const today = now.toISOString().split('T')[0];
   
   // Get tracked daily status from database
   const dailyStatusByMonitor = database.getDailyStatusForHeatmap(30);
@@ -376,8 +523,8 @@ app.get("/api/heatmap", (req, res) => {
   res.json({ success: true, data: heatmapArray, count: heatmapArray.length });
 });
 
-// Serve frontend
-app.get("/", (req, res) => {
+// Serve frontend (protected)
+app.get("/", requireAuth, (req, res) => {
   res.sendFile(path.join(__dirname, "public", "index.html"));
 });
 
@@ -410,6 +557,7 @@ const startAutoRefresh = () => {
 // Start server
 app.listen(PORT, () => {
   console.log(`🚀 BetterStack Dashboard running at http://localhost:${PORT}`);
+  console.log(`🔐 Auth enabled - Username: ${AUTH_USERNAME}`);
   
   // Load from database first
   const hasData = loadFromDatabase();

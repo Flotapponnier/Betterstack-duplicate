@@ -695,6 +695,166 @@
       color: var(--success);
     }
 
+    /* Monitor action buttons */
+    .monitor-actions {
+      display: flex;
+      gap: 0.5rem;
+      margin-top: 0.75rem;
+      padding-top: 0.75rem;
+      border-top: 1px solid var(--border);
+    }
+
+    .monitor-btn {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.375rem;
+      padding: 0.5rem 0.75rem;
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: 0.5rem;
+      color: var(--text-secondary);
+      font-family: inherit;
+      font-size: 0.75rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .monitor-btn:hover {
+      background: var(--bg-hover);
+      color: var(--text-primary);
+      border-color: var(--accent);
+    }
+
+    .monitor-btn.primary {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: white;
+    }
+
+    .monitor-btn.primary:hover {
+      background: #5558e3;
+    }
+
+    /* Test Modal */
+    .test-modal {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.8);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+      padding: 1rem;
+    }
+
+    .test-modal-content {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 1rem;
+      width: 100%;
+      max-width: 800px;
+      max-height: 80vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .test-modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 1rem 1.25rem;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .test-modal-header h3 {
+      font-size: 1.1rem;
+      font-weight: 600;
+    }
+
+    .test-modal-close {
+      background: none;
+      border: none;
+      color: var(--text-secondary);
+      font-size: 1.5rem;
+      cursor: pointer;
+      padding: 0;
+      line-height: 1;
+    }
+
+    .test-modal-close:hover {
+      color: var(--text-primary);
+    }
+
+    .test-modal-url {
+      padding: 0.75rem 1.25rem;
+      background: var(--bg-secondary);
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      word-break: break-all;
+    }
+
+    .test-modal-auth {
+      padding: 0.5rem 1.25rem;
+      background: var(--accent-glow);
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.75rem;
+      color: var(--accent);
+    }
+
+    .test-modal-body {
+      flex: 1;
+      overflow: auto;
+      padding: 1rem 1.25rem;
+    }
+
+    .test-response-status {
+      display: inline-block;
+      padding: 0.375rem 0.75rem;
+      border-radius: 0.375rem;
+      font-size: 0.85rem;
+      font-weight: 600;
+      margin-bottom: 0.75rem;
+    }
+
+    .test-response-status.success {
+      background: var(--success-bg);
+      color: var(--success);
+    }
+
+    .test-response-status.error {
+      background: var(--danger-bg);
+      color: var(--danger);
+    }
+
+    .test-response-body {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: 0.5rem;
+      padding: 1rem;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.8rem;
+      white-space: pre-wrap;
+      word-break: break-all;
+      max-height: 400px;
+      overflow: auto;
+      margin: 0;
+    }
+
+    .test-modal-actions {
+      display: flex;
+      gap: 0.5rem;
+      padding: 1rem 1.25rem;
+      border-top: 1px solid var(--border);
+    }
+
     @media (max-width: 768px) {
       .container {
         padding: 1rem;
@@ -735,6 +895,12 @@
             <path d="M23 4v6h-6M1 20v-6h6M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
           </svg>
           Refresh
+        </button>
+        <button class="refresh-btn" id="logoutBtn" onclick="logout()" style="background: var(--danger-bg); border-color: var(--danger);">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/>
+          </svg>
+          Logout
         </button>
       </div>
     </header>
@@ -814,6 +980,42 @@
     let currentTab = 'all';
     let searchQuery = '';
     let statusFilter = 'all';
+    let betterStackTeamId = 't161704'; // Default, loaded from config
+
+    // Check auth on load
+    async function checkAuth() {
+      try {
+        const response = await fetch('/api/auth/status');
+        const data = await response.json();
+        if (!data.authenticated) {
+          window.location.href = '/login';
+        }
+      } catch (error) {
+        window.location.href = '/login';
+      }
+    }
+
+    // Load config (team ID)
+    async function loadConfig() {
+      try {
+        const response = await fetch('/api/config');
+        if (response.ok) {
+          const data = await response.json();
+          betterStackTeamId = data.betterStackTeamId || 't161704';
+        }
+      } catch (error) {
+        console.error('Failed to load config:', error);
+      }
+    }
+
+    async function logout() {
+      try {
+        await fetch('/api/logout', { method: 'POST' });
+        window.location.href = '/login';
+      } catch (error) {
+        window.location.href = '/login';
+      }
+    }
 
     async function loadData() {
       const refreshBtn = document.getElementById('refreshBtn');
@@ -821,6 +1023,13 @@
       
       try {
         const response = await fetch('/api/dashboard');
+        
+        // Check if unauthorized
+        if (response.status === 401) {
+          window.location.href = '/login';
+          return;
+        }
+        
         const data = await response.json();
         
         if (data.success) {
@@ -937,8 +1146,12 @@
       const checkFrequency = attrs.check_frequency || 30;
       const monitorType = attrs.monitor_type || 'status';
       
+      // Get auth header if exists
+      const authHeader = attrs.request_headers?.find(h => h.name?.toLowerCase() === 'authorization');
+      const authValue = authHeader?.value || '';
+      
       return `
-        <div class="monitor-card" onclick="window.open('https://uptime.betterstack.com/team/t161704/monitors/${monitor.id}', '_blank')">
+        <div class="monitor-card">
           <div class="monitor-header">
             <div class="monitor-name">${escapeHtml(name)}</div>
             <div class="monitor-status ${status}">
@@ -960,8 +1173,114 @@
               </div>
             ` : ''}
           </div>
+          <div class="monitor-actions">
+            <button class="monitor-btn" onclick="event.stopPropagation(); window.open('https://uptime.betterstack.com/team/' + betterStackTeamId + '/monitors/${monitor.id}', '_blank')">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6M15 3h6v6M10 14L21 3"/>
+              </svg>
+              BetterStack
+            </button>
+            <button class="monitor-btn primary" onclick="event.stopPropagation(); testMonitorUrl('${escapeHtml(url)}', '${escapeHtml(authValue)}')">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                <circle cx="12" cy="12" r="3"/>
+              </svg>
+              See Link
+            </button>
+          </div>
         </div>
       `;
+    }
+
+    // Test monitor URL with auth header
+    async function testMonitorUrl(url, authValue) {
+      if (!url) return;
+      
+      // If no auth, just open the URL
+      if (!authValue) {
+        window.open(url, '_blank');
+        return;
+      }
+      
+      // Show loading modal
+      showTestModal(url, authValue);
+    }
+
+    function showTestModal(url, authValue) {
+      // Create modal
+      const modal = document.createElement('div');
+      modal.className = 'test-modal';
+      modal.innerHTML = `
+        <div class="test-modal-content">
+          <div class="test-modal-header">
+            <h3>API Response</h3>
+            <button class="test-modal-close" onclick="this.closest('.test-modal').remove()">×</button>
+          </div>
+          <div class="test-modal-url">${escapeHtml(url)}</div>
+          ${authValue ? `<div class="test-modal-auth">🔑 Authorization: ${escapeHtml(authValue.substring(0, 20))}...</div>` : ''}
+          <div class="test-modal-body" id="testModalBody">
+            <div class="loading-state" style="padding: 2rem;">
+              <div class="loading-spinner"></div>
+              <p>Fetching response...</p>
+            </div>
+          </div>
+          <div class="test-modal-actions">
+            <button class="monitor-btn" onclick="window.open('${escapeHtml(url)}', '_blank')">
+              Open in new tab (no auth)
+            </button>
+            <button class="monitor-btn" onclick="copyToClipboard(\`curl -H 'Authorization: ${escapeHtml(authValue)}' '${escapeHtml(url)}'\`)">
+              Copy cURL
+            </button>
+          </div>
+        </div>
+      `;
+      document.body.appendChild(modal);
+      
+      // Fetch the URL through our proxy
+      fetchWithAuth(url, authValue);
+    }
+
+    async function fetchWithAuth(url, authValue) {
+      const modalBody = document.getElementById('testModalBody');
+      try {
+        const response = await fetch('/api/proxy', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ url, authValue })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+          const isJson = typeof data.body === 'object';
+          const formattedBody = isJson 
+            ? JSON.stringify(data.body, null, 2) 
+            : data.body;
+          
+          modalBody.innerHTML = `
+            <div class="test-response-status ${data.status >= 200 && data.status < 300 ? 'success' : 'error'}">
+              Status: ${data.status} ${data.statusText || ''}
+            </div>
+            <pre class="test-response-body">${escapeHtml(formattedBody?.substring(0, 10000) || 'Empty response')}</pre>
+          `;
+        } else {
+          modalBody.innerHTML = `
+            <div class="test-response-status error">Error</div>
+            <pre class="test-response-body">${escapeHtml(data.error || 'Failed to fetch')}</pre>
+          `;
+        }
+      } catch (error) {
+        modalBody.innerHTML = `
+          <div class="test-response-status error">Error</div>
+          <pre class="test-response-body">${escapeHtml(error.message)}</pre>
+        `;
+      }
+    }
+
+    function copyToClipboard(text) {
+      navigator.clipboard.writeText(text).then(() => {
+        alert('Copied to clipboard!');
+      });
     }
 
     function renderIncidents() {
@@ -1206,6 +1525,7 @@
     }
 
     // Initial load
+    loadConfig();
     loadData();
   </script>
 </body>
