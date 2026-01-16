@@ -64,10 +64,12 @@ Open http://localhost:3000 and login with your credentials.
 | Variable | Required | Default | Description |
 |----------|----------|---------|-------------|
 | `BETTERSTACK_API_TOKEN` | Yes | - | Your BetterStack API token |
-| `BETTERSTACK_TEAM_ID` | No | t161704 | Your BetterStack team ID (from URL) |
+| `BETTERSTACK_TEAM_ID` | No | - | Your BetterStack team ID (from URL) |
 | `AUTH_USERNAME` | Yes | admin | Login username |
 | `AUTH_PASSWORD` | Yes | admin | Login password |
 | `SESSION_SECRET` | Yes (prod) | - | Secret for session encryption |
+| `PRODUCTION_URL_PATTERNS` | No | - | Comma-separated URL patterns for Production category |
+| `STAGING_URL_PATTERNS` | No | - | Comma-separated URL patterns for Staging category |
 | `PORT` | No | 3000 | Server port |
 | `NODE_ENV` | No | - | Set to `production` for production |
 

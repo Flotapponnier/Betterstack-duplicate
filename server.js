@@ -15,7 +15,15 @@ const SESSION_SECRET = process.env.SESSION_SECRET || "betterstack-dashboard-secr
 
 const BETTERSTACK_API_TOKEN = process.env.BETTERSTACK_API_TOKEN;
 const BETTERSTACK_API_URL = "https://uptime.betterstack.com/api/v2";
-const BETTERSTACK_TEAM_ID = process.env.BETTERSTACK_TEAM_ID || "t161704";
+const BETTERSTACK_TEAM_ID = process.env.BETTERSTACK_TEAM_ID || "";
+
+// URL patterns for categorization (comma-separated)
+const PRODUCTION_URL_PATTERNS = process.env.PRODUCTION_URL_PATTERNS 
+  ? process.env.PRODUCTION_URL_PATTERNS.split(',').map(p => p.trim().toLowerCase())
+  : [];
+const STAGING_URL_PATTERNS = process.env.STAGING_URL_PATTERNS
+  ? process.env.STAGING_URL_PATTERNS.split(',').map(p => p.trim().toLowerCase())
+  : [];
 
 app.use(cors());
 app.use(express.json());
@@ -77,14 +85,18 @@ const buildDashboardData = () => {
 
   monitors.forEach((monitor) => {
     const url = monitor.attributes.url?.toLowerCase() || "";
-    if (url.includes("api-2.mobula.io") || url.includes("explorer-api-2.mobula.io")) {
+    
+    // Check if URL matches any production pattern
+    const isProduction = PRODUCTION_URL_PATTERNS.length > 0 && 
+      PRODUCTION_URL_PATTERNS.some(pattern => url.includes(pattern));
+    
+    // Check if URL matches any staging pattern
+    const isStaging = STAGING_URL_PATTERNS.length > 0 && 
+      STAGING_URL_PATTERNS.some(pattern => url.includes(pattern));
+    
+    if (isProduction) {
       categorized.production.push(monitor);
-    } else if (
-      url.includes("api.mobula.io") ||
-      url.includes("api.zobula.xyz") ||
-      url.includes("explorer-api.mobula.io") ||
-      url.includes("explorer-api.zobula.xyz")
-    ) {
+    } else if (isStaging) {
       categorized.staging.push(monitor);
     } else {
       categorized.other.push(monitor);
