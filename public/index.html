@@ -1,0 +1,816 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mobula Status Dashboard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-primary: #0a0a0f;
+      --bg-secondary: #12121a;
+      --bg-card: #16161f;
+      --bg-hover: #1e1e2a;
+      --border: #2a2a3a;
+      --text-primary: #f0f0f5;
+      --text-secondary: #8888a0;
+      --text-muted: #5a5a70;
+      --accent: #6366f1;
+      --accent-glow: rgba(99, 102, 241, 0.3);
+      --success: #22c55e;
+      --success-bg: rgba(34, 197, 94, 0.1);
+      --danger: #ef4444;
+      --danger-bg: rgba(239, 68, 68, 0.1);
+      --warning: #f59e0b;
+      --warning-bg: rgba(245, 158, 11, 0.1);
+      --info: #3b82f6;
+      --info-bg: rgba(59, 130, 246, 0.1);
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Outfit', sans-serif;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      min-height: 100vh;
+      background-image: 
+        radial-gradient(ellipse 80% 50% at 50% -20%, rgba(99, 102, 241, 0.15), transparent),
+        radial-gradient(ellipse 60% 40% at 100% 100%, rgba(139, 92, 246, 0.1), transparent);
+    }
+
+    .container {
+      max-width: 1600px;
+      margin: 0 auto;
+      padding: 2rem;
+    }
+
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 2rem;
+      padding-bottom: 1.5rem;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+
+    .logo h1 {
+      font-size: 1.75rem;
+      font-weight: 700;
+      background: linear-gradient(135deg, var(--text-primary), var(--accent));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .logo-badge {
+      background: var(--accent);
+      color: white;
+      padding: 0.25rem 0.75rem;
+      border-radius: 999px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+
+    .last-updated {
+      font-size: 0.875rem;
+      color: var(--text-secondary);
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    .refresh-btn {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      color: var(--text-primary);
+      padding: 0.5rem 1rem;
+      border-radius: 0.5rem;
+      cursor: pointer;
+      font-family: inherit;
+      font-size: 0.875rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      transition: all 0.2s;
+    }
+
+    .refresh-btn:hover {
+      background: var(--bg-hover);
+      border-color: var(--accent);
+    }
+
+    .refresh-btn.loading svg {
+      animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 1rem;
+      margin-bottom: 2rem;
+    }
+
+    .stat-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 1rem;
+      padding: 1.5rem;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .stat-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 3px;
+      background: var(--accent);
+    }
+
+    .stat-card.success::before { background: var(--success); }
+    .stat-card.danger::before { background: var(--danger); }
+    .stat-card.warning::before { background: var(--warning); }
+
+    .stat-label {
+      font-size: 0.875rem;
+      color: var(--text-secondary);
+      margin-bottom: 0.5rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .stat-value {
+      font-size: 2.5rem;
+      font-weight: 700;
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    .stat-card.success .stat-value { color: var(--success); }
+    .stat-card.danger .stat-value { color: var(--danger); }
+    .stat-card.warning .stat-value { color: var(--warning); }
+
+    .stat-subtitle {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      margin-top: 0.25rem;
+    }
+
+    .tabs {
+      display: flex;
+      gap: 0.5rem;
+      margin-bottom: 1.5rem;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 1rem;
+    }
+
+    .tab {
+      background: transparent;
+      border: none;
+      color: var(--text-secondary);
+      padding: 0.75rem 1.5rem;
+      border-radius: 0.5rem;
+      cursor: pointer;
+      font-family: inherit;
+      font-size: 0.9rem;
+      font-weight: 500;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .tab:hover {
+      background: var(--bg-card);
+      color: var(--text-primary);
+    }
+
+    .tab.active {
+      background: var(--accent);
+      color: white;
+    }
+
+    .tab-badge {
+      background: rgba(255,255,255,0.2);
+      padding: 0.125rem 0.5rem;
+      border-radius: 999px;
+      font-size: 0.75rem;
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    .tab.active .tab-badge {
+      background: rgba(255,255,255,0.3);
+    }
+
+    .search-filter {
+      display: flex;
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .search-input {
+      flex: 1;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      color: var(--text-primary);
+      padding: 0.75rem 1rem;
+      border-radius: 0.5rem;
+      font-family: inherit;
+      font-size: 0.9rem;
+    }
+
+    .search-input:focus {
+      outline: none;
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px var(--accent-glow);
+    }
+
+    .filter-select {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      color: var(--text-primary);
+      padding: 0.75rem 1rem;
+      border-radius: 0.5rem;
+      font-family: inherit;
+      font-size: 0.9rem;
+      cursor: pointer;
+      min-width: 150px;
+    }
+
+    .monitors-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
+      gap: 1rem;
+    }
+
+    .monitor-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 0.75rem;
+      padding: 1.25rem;
+      transition: all 0.2s;
+      cursor: pointer;
+    }
+
+    .monitor-card:hover {
+      border-color: var(--accent);
+      transform: translateY(-2px);
+      box-shadow: 0 8px 30px rgba(0,0,0,0.3);
+    }
+
+    .monitor-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 0.75rem;
+    }
+
+    .monitor-name {
+      font-weight: 600;
+      font-size: 1rem;
+      color: var(--text-primary);
+      word-break: break-word;
+    }
+
+    .monitor-status {
+      display: flex;
+      align-items: center;
+      gap: 0.375rem;
+      padding: 0.25rem 0.75rem;
+      border-radius: 999px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      white-space: nowrap;
+    }
+
+    .monitor-status.up {
+      background: var(--success-bg);
+      color: var(--success);
+    }
+
+    .monitor-status.down {
+      background: var(--danger-bg);
+      color: var(--danger);
+    }
+
+    .monitor-status.paused {
+      background: var(--warning-bg);
+      color: var(--warning);
+    }
+
+    .monitor-status.validating {
+      background: var(--info-bg);
+      color: var(--info);
+    }
+
+    .status-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: currentColor;
+    }
+
+    .monitor-status.up .status-dot {
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+
+    .monitor-url {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      word-break: break-all;
+      margin-bottom: 0.75rem;
+      padding: 0.5rem;
+      background: var(--bg-secondary);
+      border-radius: 0.375rem;
+    }
+
+    .monitor-meta {
+      display: flex;
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+
+    .monitor-meta-item {
+      font-size: 0.75rem;
+      color: var(--text-secondary);
+      display: flex;
+      align-items: center;
+      gap: 0.25rem;
+    }
+
+    .monitor-meta-item strong {
+      color: var(--text-primary);
+      font-weight: 500;
+    }
+
+    .section-title {
+      font-size: 1.25rem;
+      font-weight: 600;
+      margin-bottom: 1rem;
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .section-badge {
+      font-size: 0.75rem;
+      padding: 0.25rem 0.75rem;
+      border-radius: 999px;
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    .section-badge.production {
+      background: var(--success-bg);
+      color: var(--success);
+    }
+
+    .section-badge.staging {
+      background: var(--warning-bg);
+      color: var(--warning);
+    }
+
+    .loading-state {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 4rem;
+      color: var(--text-secondary);
+    }
+
+    .loading-spinner {
+      width: 48px;
+      height: 48px;
+      border: 3px solid var(--border);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin-bottom: 1rem;
+    }
+
+    .error-state {
+      background: var(--danger-bg);
+      border: 1px solid var(--danger);
+      border-radius: 0.75rem;
+      padding: 2rem;
+      text-align: center;
+      color: var(--danger);
+    }
+
+    .incidents-list {
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+
+    .incident-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 0.75rem;
+      padding: 1rem;
+    }
+
+    .incident-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 0.5rem;
+    }
+
+    .incident-name {
+      font-weight: 600;
+    }
+
+    .incident-status {
+      font-size: 0.75rem;
+      padding: 0.25rem 0.75rem;
+      border-radius: 999px;
+      text-transform: uppercase;
+    }
+
+    .incident-status.started {
+      background: var(--danger-bg);
+      color: var(--danger);
+    }
+
+    .incident-status.resolved {
+      background: var(--success-bg);
+      color: var(--success);
+    }
+
+    .incident-status.acknowledged {
+      background: var(--warning-bg);
+      color: var(--warning);
+    }
+
+    .incident-meta {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 3rem;
+      color: var(--text-muted);
+    }
+
+    .env-section {
+      margin-bottom: 2rem;
+    }
+
+    @media (max-width: 768px) {
+      .container {
+        padding: 1rem;
+      }
+
+      .monitors-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .stats-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+
+      header {
+        flex-direction: column;
+        gap: 1rem;
+        align-items: flex-start;
+      }
+
+      .tabs {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div class="logo">
+        <h1>Mobula Status</h1>
+        <span class="logo-badge">Live</span>
+      </div>
+      <div class="header-actions">
+        <span class="last-updated" id="lastUpdated">Loading...</span>
+        <button class="refresh-btn" id="refreshBtn" onclick="loadData()">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M23 4v6h-6M1 20v-6h6M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
+          </svg>
+          Refresh
+        </button>
+      </div>
+    </header>
+
+    <div class="stats-grid" id="statsGrid">
+      <div class="stat-card">
+        <div class="stat-label">Total Monitors</div>
+        <div class="stat-value" id="statTotal">-</div>
+      </div>
+      <div class="stat-card success">
+        <div class="stat-label">Operational</div>
+        <div class="stat-value" id="statUp">-</div>
+        <div class="stat-subtitle" id="statUpPercent">-</div>
+      </div>
+      <div class="stat-card danger">
+        <div class="stat-label">Down</div>
+        <div class="stat-value" id="statDown">-</div>
+      </div>
+      <div class="stat-card warning">
+        <div class="stat-label">Paused</div>
+        <div class="stat-value" id="statPaused">-</div>
+      </div>
+    </div>
+
+    <div class="tabs">
+      <button class="tab active" data-tab="all">
+        All Monitors
+        <span class="tab-badge" id="tabAllCount">0</span>
+      </button>
+      <button class="tab" data-tab="production">
+        Production
+        <span class="tab-badge" id="tabProdCount">0</span>
+      </button>
+      <button class="tab" data-tab="staging">
+        Staging
+        <span class="tab-badge" id="tabStagingCount">0</span>
+      </button>
+      <button class="tab" data-tab="down">
+        Down
+        <span class="tab-badge" id="tabDownCount">0</span>
+      </button>
+      <button class="tab" data-tab="incidents">
+        Incidents
+        <span class="tab-badge" id="tabIncidentsCount">0</span>
+      </button>
+    </div>
+
+    <div class="search-filter">
+      <input type="text" class="search-input" id="searchInput" placeholder="Search monitors by name or URL...">
+      <select class="filter-select" id="statusFilter">
+        <option value="all">All Status</option>
+        <option value="up">Up</option>
+        <option value="down">Down</option>
+        <option value="paused">Paused</option>
+        <option value="validating">Validating</option>
+      </select>
+    </div>
+
+    <div id="content">
+      <div class="loading-state">
+        <div class="loading-spinner"></div>
+        <p>Loading monitors...</p>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let dashboardData = null;
+    let currentTab = 'all';
+    let searchQuery = '';
+    let statusFilter = 'all';
+
+    async function loadData() {
+      const refreshBtn = document.getElementById('refreshBtn');
+      refreshBtn.classList.add('loading');
+      
+      try {
+        const response = await fetch('/api/dashboard');
+        const data = await response.json();
+        
+        if (data.success) {
+          dashboardData = data;
+          updateUI();
+        } else {
+          showError(data.error);
+        }
+      } catch (error) {
+        showError(error.message);
+      } finally {
+        refreshBtn.classList.remove('loading');
+      }
+    }
+
+    function updateUI() {
+      if (!dashboardData) return;
+
+      const { stats, monitors, categorized, incidents, lastUpdated } = dashboardData;
+
+      // Update stats
+      document.getElementById('statTotal').textContent = stats.total;
+      document.getElementById('statUp').textContent = stats.up;
+      document.getElementById('statUpPercent').textContent = `${((stats.up / stats.total) * 100).toFixed(1)}% uptime`;
+      document.getElementById('statDown').textContent = stats.down;
+      document.getElementById('statPaused').textContent = stats.paused;
+
+      // Update tab badges
+      document.getElementById('tabAllCount').textContent = monitors.length;
+      document.getElementById('tabProdCount').textContent = categorized.production.length;
+      document.getElementById('tabStagingCount').textContent = categorized.staging.length;
+      document.getElementById('tabDownCount').textContent = stats.down;
+      document.getElementById('tabIncidentsCount').textContent = incidents.length;
+
+      // Update last updated
+      const date = new Date(lastUpdated);
+      document.getElementById('lastUpdated').textContent = `Updated: ${date.toLocaleTimeString()}`;
+
+      renderContent();
+    }
+
+    function renderContent() {
+      const content = document.getElementById('content');
+      
+      if (currentTab === 'incidents') {
+        renderIncidents();
+        return;
+      }
+
+      let monitors = [];
+      
+      switch (currentTab) {
+        case 'all':
+          monitors = dashboardData.monitors;
+          break;
+        case 'production':
+          monitors = dashboardData.categorized.production;
+          break;
+        case 'staging':
+          monitors = dashboardData.categorized.staging;
+          break;
+        case 'down':
+          monitors = dashboardData.monitors.filter(m => m.attributes.status === 'down');
+          break;
+      }
+
+      // Apply filters
+      if (searchQuery) {
+        const query = searchQuery.toLowerCase();
+        monitors = monitors.filter(m => 
+          (m.attributes.pronounceable_name || '').toLowerCase().includes(query) ||
+          (m.attributes.url || '').toLowerCase().includes(query)
+        );
+      }
+
+      if (statusFilter !== 'all') {
+        monitors = monitors.filter(m => m.attributes.status === statusFilter);
+      }
+
+      if (monitors.length === 0) {
+        content.innerHTML = '<div class="empty-state">No monitors found</div>';
+        return;
+      }
+
+      content.innerHTML = `
+        <div class="monitors-grid">
+          ${monitors.map(renderMonitorCard).join('')}
+        </div>
+      `;
+    }
+
+    function renderMonitorCard(monitor) {
+      const attrs = monitor.attributes;
+      const status = attrs.status || 'unknown';
+      const name = attrs.pronounceable_name || attrs.url || 'Unknown';
+      const url = attrs.url || '';
+      const checkFrequency = attrs.check_frequency || 30;
+      const monitorType = attrs.monitor_type || 'status';
+      
+      return `
+        <div class="monitor-card" onclick="window.open('https://uptime.betterstack.com/team/t161704/monitors/${monitor.id}', '_blank')">
+          <div class="monitor-header">
+            <div class="monitor-name">${escapeHtml(name)}</div>
+            <div class="monitor-status ${status}">
+              <span class="status-dot"></span>
+              ${status}
+            </div>
+          </div>
+          <div class="monitor-url">${escapeHtml(url)}</div>
+          <div class="monitor-meta">
+            <div class="monitor-meta-item">
+              <strong>Type:</strong> ${monitorType}
+            </div>
+            <div class="monitor-meta-item">
+              <strong>Check:</strong> ${checkFrequency}s
+            </div>
+            ${attrs.last_checked_at ? `
+              <div class="monitor-meta-item">
+                <strong>Last check:</strong> ${new Date(attrs.last_checked_at).toLocaleTimeString()}
+              </div>
+            ` : ''}
+          </div>
+        </div>
+      `;
+    }
+
+    function renderIncidents() {
+      const content = document.getElementById('content');
+      const incidents = dashboardData.incidents || [];
+
+      if (incidents.length === 0) {
+        content.innerHTML = '<div class="empty-state">No incidents recorded</div>';
+        return;
+      }
+
+      content.innerHTML = `
+        <div class="incidents-list">
+          ${incidents.map(incident => {
+            const attrs = incident.attributes;
+            const status = attrs.status || 'unknown';
+            return `
+              <div class="incident-card">
+                <div class="incident-header">
+                  <div class="incident-name">${escapeHtml(attrs.name || 'Incident')}</div>
+                  <div class="incident-status ${status}">${status}</div>
+                </div>
+                <div class="incident-meta">
+                  Started: ${attrs.started_at ? new Date(attrs.started_at).toLocaleString() : 'N/A'}
+                  ${attrs.resolved_at ? ` • Resolved: ${new Date(attrs.resolved_at).toLocaleString()}` : ''}
+                </div>
+              </div>
+            `;
+          }).join('')}
+        </div>
+      `;
+    }
+
+    function showError(message) {
+      document.getElementById('content').innerHTML = `
+        <div class="error-state">
+          <p>Error loading data: ${escapeHtml(message)}</p>
+          <button class="refresh-btn" onclick="loadData()" style="margin-top: 1rem;">
+            Try Again
+          </button>
+        </div>
+      `;
+    }
+
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    // Tab handling
+    document.querySelectorAll('.tab').forEach(tab => {
+      tab.addEventListener('click', () => {
+        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+        tab.classList.add('active');
+        currentTab = tab.dataset.tab;
+        renderContent();
+      });
+    });
+
+    // Search handling
+    document.getElementById('searchInput').addEventListener('input', (e) => {
+      searchQuery = e.target.value;
+      renderContent();
+    });
+
+    // Status filter handling
+    document.getElementById('statusFilter').addEventListener('change', (e) => {
+      statusFilter = e.target.value;
+      renderContent();
+    });
+
+    // Auto-refresh every 60 seconds
+    setInterval(loadData, 60000);
+
+    // Initial load
+    loadData();
+  </script>
+</body>
+</html>
+
