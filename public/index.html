@@ -1,0 +1,2523 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mobula Status Dashboard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-primary: #0a0a0f;
+      --bg-secondary: #12121a;
+      --bg-card: #16161f;
+      --bg-hover: #1e1e2a;
+      --border: #2a2a3a;
+      --text-primary: #f0f0f5;
+      --text-secondary: #8888a0;
+      --text-muted: #5a5a70;
+      --accent: #6366f1;
+      --accent-glow: rgba(99, 102, 241, 0.3);
+      --success: #22c55e;
+      --success-bg: rgba(34, 197, 94, 0.1);
+      --danger: #ef4444;
+      --danger-bg: rgba(239, 68, 68, 0.1);
+      --warning: #f59e0b;
+      --warning-bg: rgba(245, 158, 11, 0.1);
+      --info: #3b82f6;
+      --info-bg: rgba(59, 130, 246, 0.1);
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Outfit', sans-serif;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      min-height: 100vh;
+      background-image: 
+        radial-gradient(ellipse 80% 50% at 50% -20%, rgba(99, 102, 241, 0.15), transparent),
+        radial-gradient(ellipse 60% 40% at 100% 100%, rgba(139, 92, 246, 0.1), transparent);
+    }
+
+    .container {
+      max-width: 1600px;
+      margin: 0 auto;
+      padding: 2rem;
+    }
+
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 2rem;
+      padding-bottom: 1.5rem;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+
+    .logo h1 {
+      font-size: 1.75rem;
+      font-weight: 700;
+      background: linear-gradient(135deg, var(--text-primary), var(--accent));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .logo-badge {
+      background: var(--accent);
+      color: white;
+      padding: 0.25rem 0.75rem;
+      border-radius: 999px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+
+    .last-updated {
+      font-size: 0.875rem;
+      color: var(--text-secondary);
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    .refresh-btn {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      color: var(--text-primary);
+      padding: 0.5rem 1rem;
+      border-radius: 0.5rem;
+      cursor: pointer;
+      font-family: inherit;
+      font-size: 0.875rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      transition: all 0.2s;
+    }
+
+    .refresh-btn:hover {
+      background: var(--bg-hover);
+      border-color: var(--accent);
+    }
+
+    .refresh-btn.loading svg {
+      animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 1rem;
+      margin-bottom: 2rem;
+    }
+
+    .stat-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 1rem;
+      padding: 1.5rem;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .stat-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 3px;
+      background: var(--accent);
+    }
+
+    .stat-card.success::before { background: var(--success); }
+    .stat-card.danger::before { background: var(--danger); }
+    .stat-card.warning::before { background: var(--warning); }
+
+    .stat-label {
+      font-size: 0.875rem;
+      color: var(--text-secondary);
+      margin-bottom: 0.5rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .stat-value {
+      font-size: 2.5rem;
+      font-weight: 700;
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    .stat-card.success .stat-value { color: var(--success); }
+    .stat-card.danger .stat-value { color: var(--danger); }
+    .stat-card.warning .stat-value { color: var(--warning); }
+
+    .stat-subtitle {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      margin-top: 0.25rem;
+    }
+
+    .tabs {
+      display: flex;
+      gap: 0.5rem;
+      margin-bottom: 1.5rem;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 1rem;
+    }
+
+    .tab {
+      background: transparent;
+      border: none;
+      color: var(--text-secondary);
+      padding: 0.75rem 1.5rem;
+      border-radius: 0.5rem;
+      cursor: pointer;
+      font-family: inherit;
+      font-size: 0.9rem;
+      font-weight: 500;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .tab:hover {
+      background: var(--bg-card);
+      color: var(--text-primary);
+    }
+
+    .tab.active {
+      background: var(--accent);
+      color: white;
+    }
+
+    .tab-badge {
+      background: rgba(255,255,255,0.2);
+      padding: 0.125rem 0.5rem;
+      border-radius: 999px;
+      font-size: 0.75rem;
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    .tab.active .tab-badge {
+      background: rgba(255,255,255,0.3);
+    }
+
+    .search-filter {
+      display: flex;
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .search-input {
+      flex: 1;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      color: var(--text-primary);
+      padding: 0.75rem 1rem;
+      border-radius: 0.5rem;
+      font-family: inherit;
+      font-size: 0.9rem;
+    }
+
+    .search-input:focus {
+      outline: none;
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px var(--accent-glow);
+    }
+
+    .filter-select {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      color: var(--text-primary);
+      padding: 0.75rem 1rem;
+      border-radius: 0.5rem;
+      font-family: inherit;
+      font-size: 0.9rem;
+      cursor: pointer;
+      min-width: 150px;
+    }
+
+    .monitors-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
+      gap: 1rem;
+    }
+
+    .monitor-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 0.75rem;
+      padding: 1.25rem;
+      transition: all 0.2s;
+      cursor: pointer;
+    }
+
+    .monitor-card:hover {
+      border-color: var(--accent);
+      transform: translateY(-2px);
+      box-shadow: 0 8px 30px rgba(0,0,0,0.3);
+    }
+
+    .monitor-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 0.75rem;
+    }
+
+    .monitor-name {
+      font-weight: 600;
+      font-size: 1rem;
+      color: var(--text-primary);
+      word-break: break-word;
+    }
+
+    .monitor-status {
+      display: flex;
+      align-items: center;
+      gap: 0.375rem;
+      padding: 0.25rem 0.75rem;
+      border-radius: 999px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      white-space: nowrap;
+    }
+
+    .monitor-status.up {
+      background: var(--success-bg);
+      color: var(--success);
+    }
+
+    .monitor-status.down {
+      background: var(--danger-bg);
+      color: var(--danger);
+    }
+
+    .monitor-status.paused {
+      background: var(--warning-bg);
+      color: var(--warning);
+    }
+
+    .monitor-status.validating {
+      background: var(--info-bg);
+      color: var(--info);
+    }
+
+    .status-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: currentColor;
+    }
+
+    .monitor-status.up .status-dot {
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+
+    .monitor-url {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      word-break: break-all;
+      margin-bottom: 0.75rem;
+      padding: 0.5rem;
+      background: var(--bg-secondary);
+      border-radius: 0.375rem;
+    }
+
+    .monitor-meta {
+      display: flex;
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+
+    .monitor-meta-item {
+      font-size: 0.75rem;
+      color: var(--text-secondary);
+      display: flex;
+      align-items: center;
+      gap: 0.25rem;
+    }
+
+    .monitor-meta-item strong {
+      color: var(--text-primary);
+      font-weight: 500;
+    }
+
+    .section-title {
+      font-size: 1.25rem;
+      font-weight: 600;
+      margin-bottom: 1rem;
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .section-badge {
+      font-size: 0.75rem;
+      padding: 0.25rem 0.75rem;
+      border-radius: 999px;
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    .section-badge.production {
+      background: var(--success-bg);
+      color: var(--success);
+    }
+
+    .section-badge.staging {
+      background: var(--warning-bg);
+      color: var(--warning);
+    }
+
+    .loading-state {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 4rem;
+      color: var(--text-secondary);
+    }
+
+    .loading-spinner {
+      width: 48px;
+      height: 48px;
+      border: 3px solid var(--border);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin-bottom: 1rem;
+    }
+
+    .error-state {
+      background: var(--danger-bg);
+      border: 1px solid var(--danger);
+      border-radius: 0.75rem;
+      padding: 2rem;
+      text-align: center;
+      color: var(--danger);
+    }
+
+    .incidents-list {
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+
+    .incident-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 0.75rem;
+      padding: 1rem;
+    }
+
+    .incident-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 0.5rem;
+    }
+
+    .incident-name {
+      font-weight: 600;
+    }
+
+    .incident-status {
+      font-size: 0.75rem;
+      padding: 0.25rem 0.75rem;
+      border-radius: 999px;
+      text-transform: uppercase;
+    }
+
+    .incident-card {
+      border-left: 3px solid var(--danger);
+    }
+
+    .incident-card.resolved {
+      border-left-color: var(--success);
+      background: rgba(16, 185, 129, 0.08);
+      border-color: rgba(16, 185, 129, 0.3);
+    }
+
+    .incident-card.resolved .incident-response-body {
+      color: var(--success);
+      background: rgba(16, 185, 129, 0.1);
+    }
+
+    .incident-card.resolved .incident-cause {
+      color: var(--success);
+    }
+
+    .incident-card.acknowledged {
+      border-left-color: var(--warning);
+      background: rgba(245, 158, 11, 0.08);
+      border-color: rgba(245, 158, 11, 0.3);
+    }
+
+    .incident-card.acknowledged .incident-response-body {
+      color: var(--warning);
+    }
+
+    .incident-card.validating {
+      border-left-color: var(--accent);
+      background: rgba(99, 102, 241, 0.08);
+      border-color: rgba(99, 102, 241, 0.3);
+    }
+
+    .incident-card.validating .incident-response-body {
+      color: var(--accent);
+    }
+
+    .incident-card.validating .incident-cause {
+      color: var(--accent);
+    }
+
+    .incident-info {
+      flex: 1;
+    }
+
+    .incident-monitor {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      margin-top: 0.25rem;
+    }
+
+    .incident-cause {
+      background: var(--bg-secondary);
+      padding: 0.75rem;
+      border-radius: 0.5rem;
+      font-size: 0.85rem;
+      color: var(--text-secondary);
+      margin: 0.75rem 0;
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    .incident-status.started {
+      background: var(--danger-bg);
+      color: var(--danger);
+    }
+
+    .incident-status.resolved {
+      background: var(--success-bg);
+      color: var(--success);
+    }
+
+    .incident-status.acknowledged {
+      background: var(--warning-bg);
+      color: var(--warning);
+    }
+
+    .incident-status.validating {
+      background: rgba(99, 102, 241, 0.15);
+      color: var(--accent);
+    }
+
+    .incident-meta {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      font-family: 'JetBrains Mono', monospace;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1rem;
+    }
+
+    .incident-time, .incident-resolved, .incident-duration {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.25rem;
+    }
+
+    .incident-resolved {
+      color: var(--success);
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 3rem;
+      color: var(--text-muted);
+    }
+
+    .env-section {
+      margin-bottom: 2rem;
+    }
+
+    /* Heatmap Styles */
+    .heatmap-container {
+      overflow-x: auto;
+    }
+
+    .heatmap-row {
+      display: flex;
+      align-items: center;
+      gap: 0.25rem;
+      margin-bottom: 0.25rem;
+      padding: 0.5rem;
+      background: var(--bg-card);
+      border-radius: 0.5rem;
+      border: 1px solid var(--border);
+    }
+
+    .heatmap-row:hover {
+      border-color: var(--accent);
+    }
+
+    .heatmap-name {
+      width: 250px;
+      min-width: 250px;
+      font-size: 0.8rem;
+      font-weight: 500;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      padding-right: 1rem;
+    }
+
+    .heatmap-days {
+      display: flex;
+      gap: 2px;
+      flex: 1;
+    }
+
+    .heatmap-day {
+      width: 14px;
+      height: 14px;
+      border-radius: 2px;
+      cursor: pointer;
+      transition: transform 0.1s;
+    }
+
+    .heatmap-day:hover {
+      transform: scale(1.5);
+      z-index: 10;
+    }
+
+    .heatmap-day.up {
+      background: var(--success);
+    }
+
+    .heatmap-day.down {
+      background: var(--danger);
+    }
+
+    .heatmap-day.partial {
+      background: var(--warning);
+    }
+
+    .heatmap-day.unknown {
+      background: var(--border);
+    }
+
+    .heatmap-current {
+      width: 60px;
+      min-width: 60px;
+      text-align: center;
+    }
+
+    .heatmap-legend {
+      display: flex;
+      gap: 1.5rem;
+      margin-bottom: 1.5rem;
+      padding: 1rem;
+      background: var(--bg-card);
+      border-radius: 0.5rem;
+      border: 1px solid var(--border);
+    }
+
+    .heatmap-legend-item {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-size: 0.8rem;
+      color: var(--text-secondary);
+    }
+
+    .heatmap-legend-color {
+      width: 14px;
+      height: 14px;
+      border-radius: 2px;
+    }
+
+    .heatmap-header {
+      display: flex;
+      align-items: center;
+      gap: 0.25rem;
+      margin-bottom: 0.5rem;
+      padding-left: 260px;
+    }
+
+    .heatmap-header-day {
+      width: 14px;
+      font-size: 0.6rem;
+      text-align: center;
+      color: var(--text-muted);
+    }
+
+    /* Monitor action buttons */
+    .monitor-actions {
+      display: flex;
+      gap: 0.5rem;
+      margin-top: 0.75rem;
+      padding-top: 0.75rem;
+      border-top: 1px solid var(--border);
+    }
+
+    .monitor-btn {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.375rem;
+      padding: 0.5rem 0.75rem;
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: 0.5rem;
+      color: var(--text-secondary);
+      font-family: inherit;
+      font-size: 0.75rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .monitor-btn:hover {
+      background: var(--bg-hover);
+      color: var(--text-primary);
+      border-color: var(--accent);
+    }
+
+    .monitor-btn.primary {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: white;
+    }
+
+    .monitor-btn.primary:hover {
+      background: #5558e3;
+    }
+
+    /* Test Modal */
+    .test-modal {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.8);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+      padding: 1rem;
+    }
+
+    .test-modal-content {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 1rem;
+      width: 100%;
+      max-width: 800px;
+      max-height: 80vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .test-modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 1rem 1.25rem;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .test-modal-header h3 {
+      font-size: 1.1rem;
+      font-weight: 600;
+    }
+
+    .test-modal-close {
+      background: none;
+      border: none;
+      color: var(--text-secondary);
+      font-size: 1.5rem;
+      cursor: pointer;
+      padding: 0;
+      line-height: 1;
+    }
+
+    .test-modal-close:hover {
+      color: var(--text-primary);
+    }
+
+    .test-modal-url {
+      padding: 0.75rem 1.25rem;
+      background: var(--bg-secondary);
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      word-break: break-all;
+    }
+
+    .test-modal-auth {
+      padding: 0.5rem 1.25rem;
+      background: var(--accent-glow);
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.75rem;
+      color: var(--accent);
+    }
+
+    .test-modal-body {
+      flex: 1;
+      overflow: auto;
+      padding: 1rem 1.25rem;
+    }
+
+    .test-response-status {
+      display: inline-block;
+      padding: 0.375rem 0.75rem;
+      border-radius: 0.375rem;
+      font-size: 0.85rem;
+      font-weight: 600;
+      margin-bottom: 0.75rem;
+    }
+
+    .test-response-status.success {
+      background: var(--success-bg);
+      color: var(--success);
+    }
+
+    .test-response-status.error {
+      background: var(--danger-bg);
+      color: var(--danger);
+    }
+
+    .test-response-body {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: 0.5rem;
+      padding: 1rem;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.8rem;
+      white-space: pre-wrap;
+      word-break: break-all;
+      max-height: 400px;
+      overflow: auto;
+      margin: 0;
+    }
+
+    .test-modal-actions {
+      display: flex;
+      gap: 0.5rem;
+      padding: 1rem 1.25rem;
+      border-top: 1px solid var(--border);
+    }
+
+    /* Heartbeats Styles */
+    .heartbeats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+      gap: 1rem;
+    }
+
+    .heartbeat-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 0.75rem;
+      padding: 1.25rem;
+      border-left: 3px solid var(--success);
+    }
+
+    .heartbeat-card.down {
+      border-left-color: var(--danger);
+    }
+
+    .heartbeat-card.paused {
+      border-left-color: var(--warning);
+    }
+
+    .heartbeat-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 0.75rem;
+    }
+
+    .heartbeat-name {
+      font-weight: 600;
+      font-size: 1rem;
+    }
+
+    .heartbeat-meta {
+      display: flex;
+      gap: 1.5rem;
+      flex-wrap: wrap;
+      font-size: 0.85rem;
+      color: var(--text-secondary);
+    }
+
+    .heartbeat-meta-item {
+      display: flex;
+      align-items: center;
+      gap: 0.375rem;
+    }
+
+    /* SLA Report Styles */
+    .sla-container {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+
+    .sla-summary {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 1rem;
+      margin-bottom: 1rem;
+    }
+
+    .sla-table {
+      width: 100%;
+      border-collapse: collapse;
+      background: var(--bg-card);
+      border-radius: 0.75rem;
+      overflow: hidden;
+      border: 1px solid var(--border);
+    }
+
+    .sla-table th,
+    .sla-table td {
+      padding: 0.875rem 1rem;
+      text-align: left;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .sla-table th {
+      background: var(--bg-secondary);
+      font-weight: 600;
+      font-size: 0.8rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-secondary);
+    }
+
+    .sla-table tr:last-child td {
+      border-bottom: none;
+    }
+
+    .sla-table tr:hover {
+      background: var(--bg-hover);
+    }
+
+    .sla-availability {
+      font-family: 'JetBrains Mono', monospace;
+      font-weight: 600;
+    }
+
+    .sla-availability.good {
+      color: var(--success);
+    }
+
+    .sla-availability.warning {
+      color: var(--warning);
+    }
+
+    .sla-availability.bad {
+      color: var(--danger);
+    }
+
+    .sla-bar {
+      width: 100px;
+      height: 8px;
+      background: var(--bg-secondary);
+      border-radius: 4px;
+      overflow: hidden;
+    }
+
+    .sla-bar-fill {
+      height: 100%;
+      border-radius: 4px;
+      transition: width 0.3s;
+    }
+
+    .sla-bar-fill.good {
+      background: var(--success);
+    }
+
+    .sla-bar-fill.warning {
+      background: var(--warning);
+    }
+
+    .sla-bar-fill.bad {
+      background: var(--danger);
+    }
+
+    /* Incident Response Details */
+    .incident-response {
+      margin-top: 0.75rem;
+      padding: 0.75rem;
+      background: var(--bg-secondary);
+      border-radius: 0.5rem;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.8rem;
+    }
+
+    .incident-response-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 0.5rem;
+      color: var(--text-secondary);
+    }
+
+    .incident-response-body {
+      background: var(--bg-primary);
+      padding: 0.75rem;
+      border-radius: 0.375rem;
+      white-space: pre-wrap;
+      word-break: break-all;
+      max-height: 200px;
+      overflow: auto;
+      color: var(--danger);
+    }
+
+    .incident-timings {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+      gap: 0.5rem;
+      margin-top: 0.75rem;
+    }
+
+    .incident-timing {
+      background: var(--bg-secondary);
+      padding: 0.5rem 0.75rem;
+      border-radius: 0.375rem;
+      font-size: 0.75rem;
+    }
+
+    .incident-timing-label {
+      color: var(--text-muted);
+      display: block;
+      margin-bottom: 0.125rem;
+    }
+
+    .incident-timing-value {
+      font-family: 'JetBrains Mono', monospace;
+      color: var(--text-primary);
+      font-weight: 500;
+    }
+
+    .incident-actions {
+      display: flex;
+      gap: 0.5rem;
+      margin-top: 0.75rem;
+    }
+
+    /* Response Times Styles */
+    .response-times-container {
+      display: flex;
+      flex-direction: column;
+      gap: 1.5rem;
+    }
+
+    .response-time-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 0.75rem;
+      padding: 1.25rem;
+    }
+
+    .response-time-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1rem;
+    }
+
+    .response-time-name {
+      font-weight: 600;
+      font-size: 1rem;
+    }
+
+    .response-time-avg {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 1.25rem;
+      font-weight: 600;
+    }
+
+    .response-time-avg.fast {
+      color: var(--success);
+    }
+
+    .response-time-avg.medium {
+      color: var(--warning);
+    }
+
+    .response-time-avg.slow {
+      color: var(--danger);
+    }
+
+    .response-time-chart {
+      height: 60px;
+      display: flex;
+      align-items: flex-end;
+      gap: 2px;
+      background: var(--bg-secondary);
+      border-radius: 0.5rem;
+      padding: 0.5rem;
+    }
+
+    .response-time-bar {
+      flex: 1;
+      min-width: 3px;
+      border-radius: 2px 2px 0 0;
+      transition: height 0.3s;
+    }
+
+    .response-time-bar.fast {
+      background: var(--success);
+    }
+
+    .response-time-bar.medium {
+      background: var(--warning);
+    }
+
+    .response-time-bar.slow {
+      background: var(--danger);
+    }
+
+    .response-time-regions {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+      gap: 0.75rem;
+      margin-top: 1rem;
+    }
+
+    .response-time-region {
+      background: var(--bg-secondary);
+      padding: 0.75rem;
+      border-radius: 0.5rem;
+    }
+
+    .response-time-region-name {
+      font-size: 0.75rem;
+      color: var(--text-secondary);
+      margin-bottom: 0.25rem;
+    }
+
+    .response-time-region-value {
+      font-family: 'JetBrains Mono', monospace;
+      font-weight: 600;
+    }
+
+    .response-times-summary {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+    }
+
+    /* Modal Styles */
+    .modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.7);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+      padding: 1rem;
+    }
+
+    .modal-content {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 0.75rem;
+      width: 100%;
+      max-height: 90vh;
+      overflow: auto;
+    }
+
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 1rem 1.25rem;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .modal-header h3 {
+      margin: 0;
+      font-size: 1.1rem;
+    }
+
+    .modal-close {
+      background: none;
+      border: none;
+      font-size: 1.5rem;
+      cursor: pointer;
+      color: var(--text-secondary);
+      padding: 0;
+      line-height: 1;
+    }
+
+    .modal-close:hover {
+      color: var(--text-primary);
+    }
+
+    .modal-body {
+      padding: 1.25rem;
+    }
+
+    @media (max-width: 768px) {
+      .container {
+        padding: 1rem;
+      }
+
+      .monitors-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .stats-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+
+      header {
+        flex-direction: column;
+        gap: 1rem;
+        align-items: flex-start;
+      }
+
+      .tabs {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div class="logo">
+        <h1>Mobula Status</h1>
+        <span class="logo-badge">Live</span>
+      </div>
+      <div class="header-actions">
+        <span class="last-updated" id="lastUpdated">Loading...</span>
+        <button class="refresh-btn" id="refreshBtn" onclick="loadData()">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M23 4v6h-6M1 20v-6h6M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
+          </svg>
+          Refresh
+        </button>
+        <button class="refresh-btn" id="logoutBtn" onclick="logout()" style="background: var(--danger-bg); border-color: var(--danger);">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/>
+          </svg>
+          Logout
+        </button>
+      </div>
+    </header>
+
+    <div class="stats-grid" id="statsGrid">
+      <div class="stat-card">
+        <div class="stat-label">Total Monitors</div>
+        <div class="stat-value" id="statTotal">-</div>
+      </div>
+      <div class="stat-card success">
+        <div class="stat-label">Operational</div>
+        <div class="stat-value" id="statUp">-</div>
+        <div class="stat-subtitle" id="statUpPercent">-</div>
+      </div>
+      <div class="stat-card danger">
+        <div class="stat-label">Down</div>
+        <div class="stat-value" id="statDown">-</div>
+      </div>
+      <div class="stat-card warning">
+        <div class="stat-label">Paused</div>
+        <div class="stat-value" id="statPaused">-</div>
+      </div>
+    </div>
+
+    <div class="tabs">
+      <button class="tab active" data-tab="all">
+        All Monitors
+        <span class="tab-badge" id="tabAllCount">0</span>
+      </button>
+      <button class="tab" data-tab="production">
+        Production
+        <span class="tab-badge" id="tabProdCount">0</span>
+      </button>
+      <button class="tab" data-tab="staging">
+        Staging
+        <span class="tab-badge" id="tabStagingCount">0</span>
+      </button>
+      <button class="tab" data-tab="down">
+        Down
+        <span class="tab-badge" id="tabDownCount">0</span>
+      </button>
+      <button class="tab" data-tab="incidents">
+        Incidents
+        <span class="tab-badge" id="tabIncidentsCount">0</span>
+      </button>
+      <button class="tab" data-tab="heartbeats">
+        Heartbeats
+        <span class="tab-badge" id="tabHeartbeatsCount">0</span>
+      </button>
+      <button class="tab" data-tab="sla">
+        SLA Report
+      </button>
+      <button class="tab" data-tab="response-times">
+        Response Times
+      </button>
+      <button class="tab" data-tab="heatmap">
+        Heatmap
+      </button>
+    </div>
+
+    <div class="search-filter">
+      <input type="text" class="search-input" id="searchInput" placeholder="Search monitors by name or URL...">
+      <select class="filter-select" id="statusFilter">
+        <option value="all">All Status</option>
+        <option value="up">Up</option>
+        <option value="down">Down</option>
+        <option value="paused">Paused</option>
+        <option value="validating">Validating</option>
+      </select>
+    </div>
+
+    <div id="content">
+      <div class="loading-state">
+        <div class="loading-spinner"></div>
+        <p>Loading monitors...</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Incident Details Modal -->
+  <div id="incidentModal" class="modal-overlay" style="display: none;">
+    <div class="modal-content" style="max-width: 700px;">
+      <div class="modal-header">
+        <h3 id="incidentModalTitle">Incident Details</h3>
+        <button class="modal-close" onclick="closeIncidentModal()">&times;</button>
+      </div>
+      <div class="modal-body" style="padding: 1.25rem;">
+        <div id="incidentModalContent"></div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let dashboardData = null;
+    let heatmapData = null;
+    let heartbeatsData = null;
+    let currentTab = 'all';
+    let searchQuery = '';
+    let statusFilter = 'all';
+    let betterStackTeamId = ''; // Loaded from config
+
+    // Check auth on load
+    async function checkAuth() {
+      try {
+        const response = await fetch('/api/auth/status');
+        const data = await response.json();
+        if (!data.authenticated) {
+          window.location.href = '/login';
+        }
+      } catch (error) {
+        window.location.href = '/login';
+      }
+    }
+
+    // Load config (team ID)
+    async function loadConfig() {
+      try {
+        const response = await fetch('/api/config');
+        if (response.ok) {
+          const data = await response.json();
+          betterStackTeamId = data.betterStackTeamId || '';
+        }
+      } catch (error) {
+        console.error('Failed to load config:', error);
+      }
+    }
+
+    async function logout() {
+      try {
+        await fetch('/api/logout', { method: 'POST' });
+        window.location.href = '/login';
+      } catch (error) {
+        window.location.href = '/login';
+      }
+    }
+
+    async function loadData() {
+      const refreshBtn = document.getElementById('refreshBtn');
+      refreshBtn.classList.add('loading');
+      
+      try {
+        const response = await fetch('/api/dashboard');
+        
+        // Check if unauthorized
+        if (response.status === 401) {
+          window.location.href = '/login';
+          return;
+        }
+        
+        const data = await response.json();
+        
+        if (data.success) {
+          dashboardData = data;
+          updateUI();
+          updateRefreshInterval();
+        } else {
+          showError(data.error);
+        }
+      } catch (error) {
+        showError(error.message);
+      } finally {
+        refreshBtn.classList.remove('loading');
+      }
+    }
+
+    function updateUI() {
+      if (!dashboardData) return;
+
+      const { stats, monitors, categorized, incidents, lastUpdated, isLoading, loadingProgress } = dashboardData;
+      
+      // Show loading progress
+      if (isLoading) {
+        document.getElementById('lastUpdated').textContent = `Loading... ${loadingProgress.current} monitors`;
+      } else {
+
+      // Update stats
+      document.getElementById('statTotal').textContent = stats.total;
+      document.getElementById('statUp').textContent = stats.up;
+      document.getElementById('statUpPercent').textContent = `${((stats.up / stats.total) * 100).toFixed(1)}% uptime`;
+      document.getElementById('statDown').textContent = stats.down;
+      document.getElementById('statPaused').textContent = stats.paused;
+
+      // Update tab badges
+      document.getElementById('tabAllCount').textContent = monitors.length;
+      document.getElementById('tabProdCount').textContent = categorized.production.length;
+      document.getElementById('tabStagingCount').textContent = categorized.staging.length;
+      document.getElementById('tabDownCount').textContent = stats.down;
+      document.getElementById('tabIncidentsCount').textContent = incidents.length;
+
+      // Update last updated
+        const date = new Date(lastUpdated);
+        document.getElementById('lastUpdated').textContent = `Updated: ${date.toLocaleTimeString()}`;
+      }
+
+      renderContent();
+    }
+
+    function renderContent() {
+      const content = document.getElementById('content');
+      
+      if (currentTab === 'incidents') {
+        renderIncidents();
+        return;
+      }
+
+      if (currentTab === 'heatmap') {
+        renderHeatmap();
+        return;
+      }
+
+      if (currentTab === 'heartbeats') {
+        renderHeartbeats();
+        return;
+      }
+
+      if (currentTab === 'sla') {
+        renderSLA();
+        return;
+      }
+
+      if (currentTab === 'response-times') {
+        renderResponseTimes();
+        return;
+      }
+
+      let monitors = [];
+      
+      switch (currentTab) {
+        case 'all':
+          monitors = dashboardData.monitors;
+          break;
+        case 'production':
+          monitors = dashboardData.categorized.production;
+          break;
+        case 'staging':
+          monitors = dashboardData.categorized.staging;
+          break;
+        case 'down':
+          monitors = dashboardData.monitors.filter(m => m.attributes.status === 'down');
+          break;
+      }
+
+      // Apply filters
+      if (searchQuery) {
+        const query = searchQuery.toLowerCase();
+        monitors = monitors.filter(m => 
+          (m.attributes.pronounceable_name || '').toLowerCase().includes(query) ||
+          (m.attributes.url || '').toLowerCase().includes(query)
+        );
+      }
+
+      if (statusFilter !== 'all') {
+        monitors = monitors.filter(m => m.attributes.status === statusFilter);
+      }
+
+      if (monitors.length === 0) {
+        content.innerHTML = '<div class="empty-state">No monitors found</div>';
+        return;
+      }
+
+      content.innerHTML = `
+        <div class="monitors-grid">
+          ${monitors.map(renderMonitorCard).join('')}
+        </div>
+      `;
+    }
+
+    function renderMonitorCard(monitor) {
+      const attrs = monitor.attributes;
+      const status = attrs.status || 'unknown';
+      const name = attrs.pronounceable_name || attrs.url || 'Unknown';
+      const url = attrs.url || '';
+      const checkFrequency = attrs.check_frequency || 30;
+      const monitorType = attrs.monitor_type || 'status';
+      
+      // Get auth header if exists
+      const authHeader = attrs.request_headers?.find(h => h.name?.toLowerCase() === 'authorization');
+      const authValue = authHeader?.value || '';
+      
+      return `
+        <div class="monitor-card">
+          <div class="monitor-header">
+            <div class="monitor-name">${escapeHtml(name)}</div>
+            <div class="monitor-status ${status}">
+              <span class="status-dot"></span>
+              ${status}
+            </div>
+          </div>
+          <div class="monitor-url">${escapeHtml(url)}</div>
+          <div class="monitor-meta">
+            <div class="monitor-meta-item">
+              <strong>Type:</strong> ${monitorType}
+            </div>
+            <div class="monitor-meta-item">
+              <strong>Check:</strong> ${checkFrequency}s
+            </div>
+            ${attrs.last_checked_at ? `
+              <div class="monitor-meta-item">
+                <strong>Last check:</strong> ${new Date(attrs.last_checked_at).toLocaleTimeString()}
+              </div>
+            ` : ''}
+          </div>
+          <div class="monitor-actions">
+            ${betterStackTeamId ? `<button class="monitor-btn" onclick="event.stopPropagation(); window.open('https://uptime.betterstack.com/team/${betterStackTeamId}/monitors/${monitor.id}', '_blank')">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6M15 3h6v6M10 14L21 3"/>
+              </svg>
+              BetterStack
+            </button>` : ''}
+            <button class="monitor-btn primary" onclick="event.stopPropagation(); testMonitorUrl('${escapeHtml(url)}', '${escapeHtml(authValue)}')">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                <circle cx="12" cy="12" r="3"/>
+              </svg>
+              See Link
+            </button>
+          </div>
+        </div>
+      `;
+    }
+
+    // Test monitor URL with auth header
+    async function testMonitorUrl(url, authValue) {
+      if (!url) return;
+      
+      // If no auth, just open the URL
+      if (!authValue) {
+        window.open(url, '_blank');
+        return;
+      }
+      
+      // Show loading modal
+      showTestModal(url, authValue);
+    }
+
+    function showTestModal(url, authValue) {
+      // Create modal
+      const modal = document.createElement('div');
+      modal.className = 'test-modal';
+      modal.innerHTML = `
+        <div class="test-modal-content">
+          <div class="test-modal-header">
+            <h3>API Response</h3>
+            <button class="test-modal-close" onclick="this.closest('.test-modal').remove()">×</button>
+          </div>
+          <div class="test-modal-url">${escapeHtml(url)}</div>
+          ${authValue ? `<div class="test-modal-auth">🔑 Authorization: ${escapeHtml(authValue.substring(0, 20))}...</div>` : ''}
+          <div class="test-modal-body" id="testModalBody">
+            <div class="loading-state" style="padding: 2rem;">
+              <div class="loading-spinner"></div>
+              <p>Fetching response...</p>
+            </div>
+          </div>
+          <div class="test-modal-actions">
+            <button class="monitor-btn" onclick="window.open('${escapeHtml(url)}', '_blank')">
+              Open in new tab (no auth)
+            </button>
+            <button class="monitor-btn" onclick="copyToClipboard(\`curl -H 'Authorization: ${escapeHtml(authValue)}' '${escapeHtml(url)}'\`)">
+              Copy cURL
+            </button>
+          </div>
+        </div>
+      `;
+      document.body.appendChild(modal);
+      
+      // Fetch the URL through our proxy
+      fetchWithAuth(url, authValue);
+    }
+
+    async function fetchWithAuth(url, authValue) {
+      const modalBody = document.getElementById('testModalBody');
+      try {
+        const response = await fetch('/api/proxy', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ url, authValue })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+          const isJson = typeof data.body === 'object';
+          const formattedBody = isJson 
+            ? JSON.stringify(data.body, null, 2) 
+            : data.body;
+          
+          modalBody.innerHTML = `
+            <div class="test-response-status ${data.status >= 200 && data.status < 300 ? 'success' : 'error'}">
+              Status: ${data.status} ${data.statusText || ''}
+            </div>
+            <pre class="test-response-body">${escapeHtml(formattedBody?.substring(0, 10000) || 'Empty response')}</pre>
+          `;
+        } else {
+          modalBody.innerHTML = `
+            <div class="test-response-status error">Error</div>
+            <pre class="test-response-body">${escapeHtml(data.error || 'Failed to fetch')}</pre>
+          `;
+        }
+      } catch (error) {
+        modalBody.innerHTML = `
+          <div class="test-response-status error">Error</div>
+          <pre class="test-response-body">${escapeHtml(error.message)}</pre>
+        `;
+      }
+    }
+
+    function copyToClipboard(text) {
+      navigator.clipboard.writeText(text).then(() => {
+        alert('Copied to clipboard!');
+      });
+    }
+
+    let incidentStatusFilter = 'all';
+
+    function setIncidentFilter(filter) {
+      incidentStatusFilter = filter;
+      renderIncidents();
+    }
+
+    function renderIncidents() {
+      const content = document.getElementById('content');
+      let incidents = dashboardData.incidents || [];
+
+      if (incidents.length === 0) {
+        content.innerHTML = '<div class="empty-state">No incidents recorded</div>';
+        return;
+      }
+
+      // Apply status filter
+      if (incidentStatusFilter !== 'all') {
+        incidents = incidents.filter(i => 
+          (i.attributes?.status || '').toLowerCase() === incidentStatusFilter
+        );
+      }
+
+      // Count by status for badges
+      const allIncidents = dashboardData.incidents || [];
+      const counts = {
+        all: allIncidents.length,
+        started: allIncidents.filter(i => (i.attributes?.status || '').toLowerCase() === 'started').length,
+        validating: allIncidents.filter(i => (i.attributes?.status || '').toLowerCase() === 'validating').length,
+        resolved: allIncidents.filter(i => (i.attributes?.status || '').toLowerCase() === 'resolved').length,
+        acknowledged: allIncidents.filter(i => (i.attributes?.status || '').toLowerCase() === 'acknowledged').length,
+      };
+
+      content.innerHTML = `
+        <div class="incident-filters" style="display: flex; gap: 0.5rem; margin-bottom: 1rem; flex-wrap: wrap;">
+          <button class="tab ${incidentStatusFilter === 'all' ? 'active' : ''}" onclick="setIncidentFilter('all')">
+            All <span class="tab-badge">${counts.all}</span>
+          </button>
+          <button class="tab ${incidentStatusFilter === 'started' ? 'active' : ''}" onclick="setIncidentFilter('started')" style="border-color: var(--danger);">
+            Started <span class="tab-badge">${counts.started}</span>
+          </button>
+          <button class="tab ${incidentStatusFilter === 'validating' ? 'active' : ''}" onclick="setIncidentFilter('validating')" style="border-color: var(--accent);">
+            Validating <span class="tab-badge">${counts.validating}</span>
+          </button>
+          <button class="tab ${incidentStatusFilter === 'acknowledged' ? 'active' : ''}" onclick="setIncidentFilter('acknowledged')" style="border-color: var(--warning);">
+            Acknowledged <span class="tab-badge">${counts.acknowledged}</span>
+          </button>
+          <button class="tab ${incidentStatusFilter === 'resolved' ? 'active' : ''}" onclick="setIncidentFilter('resolved')" style="border-color: var(--success);">
+            Resolved <span class="tab-badge">${counts.resolved}</span>
+          </button>
+        </div>
+        <div class="incidents-list">
+          ${incidents.map(incident => {
+            const attrs = incident.attributes;
+            const statusRaw = attrs.status || 'unknown';
+            const status = statusRaw.toLowerCase(); // Normalize to lowercase
+            const monitor = dashboardData.monitors.find(m => m.id === incident.relationships?.monitor?.data?.id);
+            const monitorName = monitor?.attributes?.pronounceable_name || 'Unknown monitor';
+            const monitorUrl = monitor?.attributes?.url || '';
+            
+            // Calculate duration
+            let duration = '';
+            if (attrs.started_at) {
+              const start = new Date(attrs.started_at);
+              const end = attrs.resolved_at ? new Date(attrs.resolved_at) : new Date();
+              const diffMs = end - start;
+              const diffMins = Math.floor(diffMs / 60000);
+              const diffHours = Math.floor(diffMins / 60);
+              const diffDays = Math.floor(diffHours / 24);
+              
+              if (diffDays > 0) {
+                duration = diffDays + 'd ' + (diffHours % 24) + 'h';
+              } else if (diffHours > 0) {
+                duration = diffHours + 'h ' + (diffMins % 60) + 'm';
+              } else {
+                duration = diffMins + 'm';
+              }
+            }
+            
+            // Status icon
+            const statusIcon = status === 'resolved' ? '[OK]' : status === 'acknowledged' ? '[ACK]' : status === 'validating' ? '[VAL]' : '[ERR]';
+            
+            // Parse response content for display
+            const hasResponseContent = attrs.response_content && attrs.response_content.trim();
+            
+            return `
+              <div class="incident-card ${status}">
+                <div class="incident-header">
+                  <div class="incident-info">
+                    <div class="incident-name">${statusIcon} ${escapeHtml(attrs.name || 'Incident')}</div>
+                    <div class="incident-monitor">${escapeHtml(monitorName)}</div>
+                  </div>
+                  <div class="incident-status ${status}">${status}</div>
+                </div>
+                ${attrs.cause ? `<div class="incident-cause">${escapeHtml(attrs.cause)}</div>` : ''}
+                
+                <div class="incident-timings">
+                  <div class="incident-timing">
+                    <span class="incident-timing-label">Started</span>
+                    <span class="incident-timing-value">${attrs.started_at ? new Date(attrs.started_at).toLocaleString() : '-'}</span>
+                  </div>
+                  ${attrs.acknowledged_at ? `
+                    <div class="incident-timing">
+                      <span class="incident-timing-label">Acknowledged</span>
+                      <span class="incident-timing-value">${new Date(attrs.acknowledged_at).toLocaleString()}</span>
+                    </div>
+                  ` : ''}
+                  ${attrs.resolved_at ? `
+                    <div class="incident-timing">
+                      <span class="incident-timing-label">Resolved</span>
+                      <span class="incident-timing-value">${new Date(attrs.resolved_at).toLocaleString()}</span>
+                    </div>
+                  ` : ''}
+                  <div class="incident-timing">
+                    <span class="incident-timing-label">Duration</span>
+                    <span class="incident-timing-value">${duration || 'ongoing'}</span>
+                  </div>
+                  ${attrs.http_method ? `
+                    <div class="incident-timing">
+                      <span class="incident-timing-label">HTTP Method</span>
+                      <span class="incident-timing-value">${attrs.http_method}</span>
+                    </div>
+                  ` : ''}
+                </div>
+
+                ${hasResponseContent ? `
+                  <div class="incident-response">
+                    <div class="incident-response-header">
+                      <span>Response Content</span>
+                      <button class="refresh-btn" style="padding: 0.25rem 0.5rem; font-size: 0.7rem;" onclick="copyToClipboard(\`${escapeHtml(attrs.response_content).replace(/`/g, '\\`')}\`)">
+                        Copy
+                      </button>
+                    </div>
+                    <div class="incident-response-body">${escapeHtml(attrs.response_content?.substring(0, 1000) || '')}${attrs.response_content?.length > 1000 ? '...' : ''}</div>
+                  </div>
+                ` : ''}
+
+                <div class="incident-actions">
+                  <button class="refresh-btn" style="padding: 0.375rem 0.75rem; font-size: 0.8rem;" onclick="viewIncidentDetails('${incident.id}')">
+                    View Details
+                  </button>
+                  ${attrs.screenshot_url ? `
+                    <button class="refresh-btn" style="padding: 0.375rem 0.75rem; font-size: 0.8rem;" onclick="window.open('${attrs.screenshot_url}', '_blank')">
+                      📸 Screenshot
+                    </button>
+                  ` : ''}
+                </div>
+              </div>
+            `;
+          }).join('')}
+        </div>
+      `;
+    }
+
+    async function viewIncidentDetails(incidentId) {
+      try {
+        const response = await fetch('/api/incidents/' + incidentId);
+        const data = await response.json();
+        
+        if (!data.success) {
+          alert('Failed to load incident details');
+          return;
+        }
+
+        const incident = data.data;
+        const modal = document.getElementById('incidentModal');
+        const statusLower = (incident.status || '').toLowerCase();
+        const statusClass = statusLower === 'resolved' ? 'good' : statusLower === 'acknowledged' ? 'warning' : 'bad';
+        
+        document.getElementById('incidentModalTitle').textContent = incident.name || 'Incident Details';
+        
+        let responseContent = incident.responseContent || '';
+        if (typeof responseContent === 'object') {
+          responseContent = JSON.stringify(responseContent, null, 2);
+        }
+
+        document.getElementById('incidentModalContent').innerHTML = `
+          <div style="display: flex; gap: 0.5rem; align-items: center; margin-bottom: 1rem;">
+            <span class="status-badge ${statusLower}">${incident.status}</span>
+            ${incident.cause ? `<span style="color: var(--text-secondary);">• ${escapeHtml(incident.cause)}</span>` : ''}
+          </div>
+          
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1rem; margin-bottom: 1rem;">
+            <div class="incident-timing">
+              <span class="incident-timing-label">Started</span>
+              <span class="incident-timing-value">${incident.startedAt ? new Date(incident.startedAt).toLocaleString() : '-'}</span>
+            </div>
+            ${incident.acknowledgedAt ? `
+              <div class="incident-timing">
+                <span class="incident-timing-label">Acknowledged</span>
+                <span class="incident-timing-value">${new Date(incident.acknowledgedAt).toLocaleString()}</span>
+              </div>
+            ` : ''}
+            ${incident.resolvedAt ? `
+              <div class="incident-timing">
+                <span class="incident-timing-label">Resolved</span>
+                <span class="incident-timing-value">${new Date(incident.resolvedAt).toLocaleString()}</span>
+              </div>
+            ` : ''}
+            <div class="incident-timing">
+              <span class="incident-timing-label">HTTP Method</span>
+              <span class="incident-timing-value">${incident.httpMethod || 'GET'}</span>
+            </div>
+          </div>
+          
+          <div style="margin-bottom: 1rem;">
+            <div style="font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 0.25rem;">Monitor URL</div>
+            <div style="font-family: 'JetBrains Mono', monospace; font-size: 0.85rem; word-break: break-all; background: var(--bg-secondary); padding: 0.5rem; border-radius: 0.375rem;">
+              ${escapeHtml(incident.url || incident.monitor?.url || 'N/A')}
+            </div>
+          </div>
+          
+          ${responseContent ? `
+            <div style="margin-bottom: 1rem;">
+              <div style="font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 0.25rem;">Response Content</div>
+              <pre style="font-family: 'JetBrains Mono', monospace; font-size: 0.8rem; background: var(--bg-secondary); padding: 0.75rem; border-radius: 0.375rem; overflow: auto; max-height: 200px; white-space: pre-wrap; word-break: break-all; color: var(--${statusClass === 'good' ? 'success' : 'danger'});">${escapeHtml(responseContent)}</pre>
+            </div>
+          ` : ''}
+          
+          ${incident.screenshotUrl ? `
+            <div>
+              <div style="font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 0.25rem;">Screenshot</div>
+              <a href="${incident.screenshotUrl}" target="_blank" class="refresh-btn" style="display: inline-flex;">📸 View Screenshot</a>
+            </div>
+          ` : ''}
+          
+          ${incident.regions && incident.regions.length > 0 ? `
+            <div style="margin-top: 1rem;">
+              <div style="font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 0.25rem;">Affected Regions</div>
+              <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                ${incident.regions.map(r => `<span class="status-badge">${r}</span>`).join('')}
+              </div>
+            </div>
+          ` : ''}
+        `;
+        
+        modal.style.display = 'flex';
+      } catch (error) {
+        alert('Error loading incident: ' + error.message);
+      }
+    }
+
+    function closeIncidentModal() {
+      document.getElementById('incidentModal').style.display = 'none';
+    }
+
+    async function renderHeatmap() {
+      const content = document.getElementById('content');
+      
+      // Show loading if no data yet
+      if (!heatmapData) {
+        content.innerHTML = '<div class="loading-state"><div class="loading-spinner"></div><p>Loading heatmap data...</p></div>';
+        
+        try {
+          const response = await fetch('/api/heatmap');
+          const data = await response.json();
+          if (data.success) {
+            heatmapData = data.data;
+          }
+        } catch (error) {
+          content.innerHTML = '<div class="error-state">Failed to load heatmap</div>';
+          return;
+        }
+      }
+
+      if (!heatmapData || heatmapData.length === 0) {
+        content.innerHTML = '<div class="empty-state">No heatmap data available</div>';
+        return;
+      }
+
+      // Generate day headers
+      const dayHeaders = [];
+      for (let i = 29; i >= 0; i--) {
+        const date = new Date(Date.now() - i * 24 * 60 * 60 * 1000);
+        dayHeaders.push(date.getDate());
+      }
+
+      content.innerHTML = `
+        <div class="heatmap-legend">
+          <div class="heatmap-legend-item">
+            <div class="heatmap-legend-color" style="background: var(--success);"></div>
+            <span>Operational</span>
+          </div>
+          <div class="heatmap-legend-item">
+            <div class="heatmap-legend-color" style="background: var(--warning);"></div>
+            <span>Partial outage</span>
+          </div>
+          <div class="heatmap-legend-item">
+            <div class="heatmap-legend-color" style="background: var(--danger);"></div>
+            <span>Down</span>
+          </div>
+          <div class="heatmap-legend-item">
+            <div class="heatmap-legend-color" style="background: var(--border);"></div>
+            <span>No data</span>
+          </div>
+        </div>
+        <div class="heatmap-header">
+          ${dayHeaders.map(d => `<div class="heatmap-header-day">${d}</div>`).join('')}
+        </div>
+        <div class="heatmap-container">
+          ${heatmapData.map(monitor => `
+            <div class="heatmap-row">
+              <div class="heatmap-name" title="${escapeHtml(monitor.name)}">${escapeHtml(monitor.name)}</div>
+              <div class="heatmap-days">
+                ${monitor.days.map(day => {
+                  let statusClass = day.status;
+                  if (day.downtime > 0 && day.downtime < 1440) statusClass = 'partial';
+                  const tooltip = day.status === 'down' || day.downtime > 0 
+                    ? `${day.date}: ${day.downtime}min downtime` 
+                    : `${day.date}: Operational`;
+                  return `<div class="heatmap-day ${statusClass}" title="${tooltip}"></div>`;
+                }).join('')}
+              </div>
+              <div class="heatmap-current">
+                <span class="monitor-status ${monitor.currentStatus}">
+                  <span class="status-dot"></span>
+                  ${monitor.currentStatus}
+                </span>
+              </div>
+            </div>
+          `).join('')}
+        </div>
+      `;
+    }
+
+    function formatTimeAgo(timestamp) {
+      if (!timestamp) return 'N/A';
+      const now = new Date();
+      const date = new Date(timestamp);
+      const diff = now - date;
+      
+      const minutes = Math.floor(diff / 60000);
+      const hours = Math.floor(diff / 3600000);
+      const days = Math.floor(diff / 86400000);
+      
+      if (minutes < 1) return 'just now';
+      if (minutes < 60) return `${minutes}m ago`;
+      if (hours < 24) return `${hours}h ago`;
+      if (days < 7) return `${days}d ago`;
+      return date.toLocaleDateString();
+    }
+
+    // ============== HEARTBEATS ==============
+    async function renderHeartbeats() {
+      const content = document.getElementById('content');
+      
+      if (!heartbeatsData) {
+        content.innerHTML = '<div class="loading-state"><div class="loading-spinner"></div><p>Loading heartbeats...</p></div>';
+        
+        try {
+          const response = await fetch('/api/heartbeats');
+          const data = await response.json();
+          if (data.success) {
+            heartbeatsData = data.data;
+            document.getElementById('tabHeartbeatsCount').textContent = heartbeatsData.length;
+          }
+        } catch (error) {
+          content.innerHTML = '<div class="error-state">Failed to load heartbeats</div>';
+          return;
+        }
+      }
+
+      if (!heartbeatsData || heartbeatsData.length === 0) {
+        content.innerHTML = `
+          <div class="empty-state">
+            <div style="text-align: center; padding: 3rem;">
+              <div style="font-size: 2rem; margin-bottom: 1rem;">No heartbeats configured</div>
+              <h3 style="margin-bottom: 0.5rem;">No Heartbeats Configured</h3>
+              <p style="color: var(--text-secondary);">
+                Heartbeats are used to monitor cron jobs, scheduled tasks, and background processes.
+              </p>
+            </div>
+          </div>
+        `;
+        return;
+      }
+
+      content.innerHTML = `
+        <div class="heartbeats-grid">
+          ${heartbeatsData.map(hb => {
+            const statusClass = hb.status === 'up' ? '' : (hb.paused ? 'paused' : 'down');
+            const statusIcon = hb.status === 'up' ? '🟢' : (hb.paused ? '⏸️' : '🔴');
+            const periodStr = formatPeriod(hb.period);
+            const graceStr = formatPeriod(hb.grace);
+            
+              return `
+              <div class="heartbeat-card ${statusClass}">
+                <div class="heartbeat-header">
+                  <div class="heartbeat-name">${escapeHtml(hb.name)}</div>
+                  <div class="status-badge ${hb.status}">${statusIcon} ${hb.status}</div>
+                    </div>
+                <div class="heartbeat-meta">
+                  <div class="heartbeat-meta-item">
+                    <span>⏱️</span>
+                    <span>Expected every ${periodStr}</span>
+                  </div>
+                  <div class="heartbeat-meta-item">
+                    <span>⏳</span>
+                    <span>Grace: ${graceStr}</span>
+                </div>
+                    </div>
+                <div style="margin-top: 0.75rem;">
+                  <div class="monitor-url" style="font-size: 0.75rem; word-break: break-all;">${escapeHtml(hb.url || '-')}</div>
+                  </div>
+              </div>
+            `;
+          }).join('')}
+                </div>
+              `;
+            }
+
+    function formatPeriod(seconds) {
+      if (!seconds) return '-';
+      if (seconds < 60) return `${seconds}s`;
+      if (seconds < 3600) return `${Math.floor(seconds / 60)}m`;
+      if (seconds < 86400) return `${Math.floor(seconds / 3600)}h`;
+      return `${Math.floor(seconds / 86400)}d`;
+    }
+
+    // ============== SLA REPORT ==============
+    let slaLoadedData = [];
+    let slaLoadingState = { loading: false, loaded: 0, total: 0 };
+
+    async function renderSLA() {
+      const content = document.getElementById('content');
+      
+      if (!dashboardData || !dashboardData.monitors) {
+        content.innerHTML = '<div class="loading-state"><div class="loading-spinner"></div><p>Loading...</p></div>';
+        return;
+      }
+
+      // Show initial UI
+      updateSLAUI();
+      
+      // Start loading SLA data in batches if not already loaded
+      if (slaLoadedData.length < dashboardData.monitors.length && !slaLoadingState.loading) {
+        loadSLABatch(dashboardData.monitors);
+      }
+    }
+
+    async function loadSLABatch(monitors) {
+      slaLoadingState.loading = true;
+      slaLoadingState.total = monitors.length;
+      slaLoadingState.loaded = 0;
+      
+      const BATCH_SIZE = 10;
+      const today = new Date().toISOString().split('T')[0];
+      const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+      
+      for (let i = 0; i < monitors.length; i += BATCH_SIZE) {
+        const batch = monitors.slice(i, i + BATCH_SIZE);
+        
+        // Load batch in parallel
+        await Promise.all(batch.map(async (monitor) => {
+          // Skip if already loaded
+          if (slaLoadedData.find(s => s.monitorId === monitor.id)) {
+            slaLoadingState.loaded++;
+            return;
+          }
+          
+          const monitorEntry = {
+            monitorId: monitor.id,
+            monitorName: monitor.attributes?.pronounceable_name || monitor.attributes?.url,
+            monitorUrl: monitor.attributes?.url,
+            status: monitor.attributes?.status,
+            availability: null,
+            totalDowntime: null,
+            numberOfIncidents: null,
+            longestIncident: null,
+            averageIncident: null,
+          };
+          
+          try {
+            const response = await fetch(`/api/sla/${monitor.id}?from=${thirtyDaysAgo}&to=${today}`);
+            const data = await response.json();
+            
+            if (data.success && data.data) {
+              monitorEntry.availability = data.data.availability;
+              monitorEntry.totalDowntime = data.data.totalDowntime;
+              monitorEntry.numberOfIncidents = data.data.numberOfIncidents;
+              monitorEntry.longestIncident = data.data.longestIncident;
+              monitorEntry.averageIncident = data.data.averageIncident;
+            }
+          } catch (err) {
+            // Keep null values for failed monitors
+          }
+          
+          slaLoadedData.push(monitorEntry);
+          slaLoadingState.loaded++;
+        }));
+        
+        // Update UI after each batch
+        if (currentTab === 'sla') {
+          updateSLAUI();
+        }
+        
+        // Small delay between batches
+        await new Promise(r => setTimeout(r, 50));
+      }
+      
+      slaLoadingState.loading = false;
+      if (currentTab === 'sla') {
+        updateSLAUI();
+      }
+    }
+
+    function updateSLAUI() {
+      const content = document.getElementById('content');
+      
+      // Sort by availability (lowest first)
+      const sortedData = [...slaLoadedData].sort((a, b) => (a.availability || 100) - (b.availability || 100));
+      
+      // Calculate summary stats
+      const dataWithAvail = sortedData.filter(m => m.availability !== null && m.availability !== undefined);
+      const avgAvailability = dataWithAvail.length > 0 
+        ? dataWithAvail.reduce((sum, m) => sum + m.availability, 0) / dataWithAvail.length 
+        : 0;
+      const totalIncidents = sortedData.reduce((sum, m) => sum + (m.numberOfIncidents || 0), 0);
+      const monitorsBelow99 = dataWithAvail.filter(m => m.availability < 99).length;
+      const monitorsBelow95 = dataWithAvail.filter(m => m.availability < 95).length;
+
+      const loadingText = slaLoadingState.loading 
+        ? `⏳ Loading ${slaLoadingState.loaded}/${slaLoadingState.total}...` 
+        : `✅ Loaded ${slaLoadedData.length} monitors`;
+
+      const today = new Date().toISOString().split('T')[0];
+      const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+
+      content.innerHTML = `
+        <div class="sla-container">
+          <div class="sla-summary">
+            <div class="stat-card">
+              <div class="stat-label">Avg Availability (30d)</div>
+              <div class="stat-value sla-availability ${getAvailabilityClass(avgAvailability)}">${avgAvailability > 0 ? avgAvailability.toFixed(3) + '%' : '-'}</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-label">Total Incidents</div>
+              <div class="stat-value">${totalIncidents}</div>
+            </div>
+            <div class="stat-card warning">
+              <div class="stat-label">Below 99% SLA</div>
+              <div class="stat-value">${monitorsBelow99}</div>
+            </div>
+            <div class="stat-card danger">
+              <div class="stat-label">Below 95% SLA</div>
+              <div class="stat-value">${monitorsBelow95}</div>
+            </div>
+          </div>
+
+          <p style="color: var(--text-secondary); margin-bottom: 1rem;">
+            Period: ${thirtyDaysAgo} to ${today} | ${loadingText} | Sorted by availability (lowest first)
+          </p>
+
+          ${sortedData.length === 0 ? `
+            <div class="loading-state">
+              <div class="loading-spinner"></div>
+              <p>Loading SLA data...</p>
+            </div>
+          ` : `
+            <table class="sla-table">
+              <thead>
+                <tr>
+                  <th>Monitor</th>
+                  <th>Status</th>
+                  <th>Availability</th>
+                  <th></th>
+                  <th>Downtime</th>
+                  <th>Incidents</th>
+                  <th>Longest</th>
+                  <th>Average</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${sortedData.map(m => {
+                  const availClass = getAvailabilityClass(m.availability);
+                  return `
+                    <tr>
+                      <td>
+                        <div style="font-weight: 500;">${escapeHtml(m.monitorName || '')}</div>
+                        <div style="font-size: 0.75rem; color: var(--text-muted); max-width: 300px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                          ${escapeHtml(m.monitorUrl || '')}
+                        </div>
+                      </td>
+                      <td><span class="status-badge ${m.status}">${m.status}</span></td>
+                    <td class="sla-availability ${availClass}">${m.availability !== null ? m.availability.toFixed(3) + '%' : 'N/A'}</td>
+                    <td>
+                      <div class="sla-bar">
+                        <div class="sla-bar-fill ${availClass}" style="width: ${m.availability !== null ? m.availability : 0}%"></div>
+                      </div>
+                    </td>
+                    <td>${m.totalDowntime !== null ? formatDuration(m.totalDowntime) : '-'}</td>
+                    <td>${m.numberOfIncidents !== null ? m.numberOfIncidents : '-'}</td>
+                      <td>${formatDuration(m.longestIncident)}</td>
+                      <td>${formatDuration(m.averageIncident)}</td>
+                    </tr>
+                  `;
+          }).join('')}
+              </tbody>
+            </table>
+          `}
+        </div>
+      `;
+    }
+
+    function getAvailabilityClass(availability) {
+      if (availability >= 99.9) return 'good';
+      if (availability >= 95) return 'warning';
+      return 'bad';
+    }
+
+    function formatDuration(seconds) {
+      if (!seconds) return '-';
+      if (seconds < 60) return `${seconds}s`;
+      if (seconds < 3600) return `${Math.floor(seconds / 60)}m ${seconds % 60}s`;
+      const hours = Math.floor(seconds / 3600);
+      const mins = Math.floor((seconds % 3600) / 60);
+      return `${hours}h ${mins}m`;
+    }
+
+    // ============== RESPONSE TIMES ==============
+    let responseTimesData = {};
+    let rtLoadingState = { loading: false, loaded: 0, total: 0 };
+
+    async function renderResponseTimes() {
+      const content = document.getElementById('content');
+      
+      if (!dashboardData || !dashboardData.monitors) {
+        content.innerHTML = '<div class="loading-state"><div class="loading-spinner"></div><p>Loading...</p></div>';
+        return;
+      }
+
+      // Filter only active monitors (up status)
+      const activeMonitors = dashboardData.monitors.filter(m => m.attributes.status === 'up');
+      
+      // Show initial UI with loading state
+      updateResponseTimesUI(activeMonitors);
+      
+      // Start loading response times in batches if not already loaded
+      if (Object.keys(responseTimesData).length < activeMonitors.length && !rtLoadingState.loading) {
+        loadResponseTimesBatch(activeMonitors);
+      }
+    }
+
+    async function loadResponseTimesBatch(monitors) {
+      rtLoadingState.loading = true;
+      rtLoadingState.total = monitors.length;
+      
+      const BATCH_SIZE = 5;
+      const today = new Date().toISOString().split('T')[0];
+      const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+      
+      for (let i = 0; i < monitors.length; i += BATCH_SIZE) {
+        const batch = monitors.slice(i, i + BATCH_SIZE);
+        
+        // Load batch in parallel
+        await Promise.all(batch.map(async (monitor) => {
+          try {
+            const response = await fetch(`/api/response-times/${monitor.id}?from=${yesterday}&to=${today}`);
+            const data = await response.json();
+            
+            if (data.success && data.data) {
+              // Calculate average from all regions
+              const regions = data.data;
+              let totalMs = 0;
+              let count = 0;
+              
+              regions.forEach(region => {
+                if (region.response_times && region.response_times.length > 0) {
+                  region.response_times.forEach(rt => {
+                    if (rt.response_time) {
+                      totalMs += rt.response_time;
+                      count++;
+                    }
+                  });
+                }
+              });
+              
+              responseTimesData[monitor.id] = {
+                avgMs: count > 0 ? Math.round(totalMs / count) : null,
+                regions: regions,
+                dataPoints: count,
+              };
+            }
+          } catch (err) {
+            // Skip failed monitors
+          }
+          
+          rtLoadingState.loaded++;
+        }));
+        
+        // Update UI after each batch
+        if (currentTab === 'response-times') {
+          updateResponseTimesUI(monitors);
+        }
+        
+        // Small delay between batches
+        await new Promise(r => setTimeout(r, 100));
+      }
+      
+      rtLoadingState.loading = false;
+    }
+
+    function updateResponseTimesUI(monitors) {
+      const content = document.getElementById('content');
+      
+      // Build monitor data with response times
+      const monitorsWithRT = monitors.map(m => ({
+        id: m.id,
+        name: m.attributes.pronounceable_name || m.attributes.url,
+        url: m.attributes.url,
+        status: m.attributes.status,
+        responseTime: responseTimesData[m.id]?.avgMs || null,
+        dataPoints: responseTimesData[m.id]?.dataPoints || 0,
+        loaded: !!responseTimesData[m.id],
+      }));
+
+      // Sort by response time (slowest first), then by name
+      monitorsWithRT.sort((a, b) => {
+        if (a.responseTime === null && b.responseTime === null) return 0;
+        if (a.responseTime === null) return 1;
+        if (b.responseTime === null) return -1;
+        return b.responseTime - a.responseTime;
+      });
+
+      // Summary stats (only loaded ones)
+      const loadedMonitors = monitorsWithRT.filter(m => m.responseTime !== null);
+      const avgRT = loadedMonitors.length > 0 
+        ? loadedMonitors.reduce((sum, m) => sum + m.responseTime, 0) / loadedMonitors.length
+        : 0;
+      const fastCount = loadedMonitors.filter(m => m.responseTime < 300).length;
+      const mediumCount = loadedMonitors.filter(m => m.responseTime >= 300 && m.responseTime < 1000).length;
+      const slowCount = loadedMonitors.filter(m => m.responseTime >= 1000).length;
+
+      const loadingText = rtLoadingState.loading 
+        ? `⏳ Loading ${rtLoadingState.loaded}/${rtLoadingState.total}...` 
+        : `✅ Loaded ${loadedMonitors.length}/${monitors.length} monitors`;
+
+      content.innerHTML = `
+        <div class="response-times-container">
+          <div class="response-times-summary">
+            <div class="stat-card">
+              <div class="stat-label">Avg Response Time (24h)</div>
+              <div class="stat-value response-time-avg ${getResponseTimeClass(avgRT)}">${avgRT > 0 ? Math.round(avgRT) + 'ms' : '-'}</div>
+            </div>
+            <div class="stat-card success">
+              <div class="stat-label">Fast (&lt;300ms)</div>
+              <div class="stat-value">${fastCount}</div>
+            </div>
+            <div class="stat-card warning">
+              <div class="stat-label">Medium (300-1000ms)</div>
+              <div class="stat-value">${mediumCount}</div>
+            </div>
+            <div class="stat-card danger">
+              <div class="stat-label">Slow (&gt;1000ms)</div>
+              <div class="stat-value">${slowCount}</div>
+            </div>
+          </div>
+
+          <p style="color: var(--text-secondary); margin-bottom: 1rem;">
+            📊 Response times (last 24h) - ${loadingText} | Sorted slowest first
+          </p>
+
+          <div class="monitors-grid">
+            ${monitorsWithRT.slice(0, 50).map(m => {
+              const rtClass = getResponseTimeClass(m.responseTime);
+              const barHeight = m.responseTime ? Math.min(100, Math.max(10, (m.responseTime / 20))) : 0;
+              
+              return `
+                <div class="monitor-card">
+                  <div class="monitor-header">
+                    <span class="status-badge ${m.status}">${m.status}</span>
+                    <span class="response-time-avg ${rtClass}" style="font-size: 0.9rem;">
+                      ${m.loaded ? (m.responseTime ? Math.round(m.responseTime) + 'ms' : 'No data') : '⏳'}
+                    </span>
+                  </div>
+                  <div class="monitor-name">${escapeHtml(m.name)}</div>
+                  <div class="monitor-url">${escapeHtml(m.url || '')}</div>
+                  <div style="margin-top: 0.75rem; height: 40px; background: var(--bg-secondary); border-radius: 0.375rem; display: flex; align-items: flex-end; padding: 0.25rem;">
+                    <div style="width: 100%; height: ${barHeight}%; background: var(--${rtClass === 'fast' ? 'success' : rtClass === 'medium' ? 'warning' : 'danger'}); border-radius: 0.25rem; transition: height 0.3s;"></div>
+                  </div>
+                  <div style="display: flex; justify-content: space-between; margin-top: 0.5rem; font-size: 0.7rem; color: var(--text-muted);">
+                    <span>0ms</span>
+                    <span>${m.dataPoints} samples</span>
+                    <span>2000ms+</span>
+                  </div>
+                </div>
+              `;
+            }).join('')}
+          </div>
+
+          ${monitorsWithRT.length > 50 ? `
+            <p style="color: var(--text-secondary); text-align: center; margin-top: 1rem;">
+              Showing 50 of ${monitorsWithRT.length} active monitors
+            </p>
+          ` : ''}
+        </div>
+      `;
+    }
+
+    function getResponseTimeClass(ms) {
+      if (!ms || ms < 300) return 'fast';
+      if (ms < 1000) return 'medium';
+      return 'slow';
+    }
+
+    function showError(message) {
+      document.getElementById('content').innerHTML = `
+        <div class="error-state">
+          <p>Error loading data: ${escapeHtml(message)}</p>
+          <button class="refresh-btn" onclick="loadData()" style="margin-top: 1rem;">
+            Try Again
+          </button>
+        </div>
+      `;
+    }
+
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    // Tab handling
+    document.querySelectorAll('.tab').forEach(tab => {
+      tab.addEventListener('click', () => {
+        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+        tab.classList.add('active');
+        currentTab = tab.dataset.tab;
+        renderContent();
+      });
+    });
+
+    // Search handling
+    document.getElementById('searchInput').addEventListener('input', (e) => {
+      searchQuery = e.target.value;
+      renderContent();
+    });
+
+    // Status filter handling
+    document.getElementById('statusFilter').addEventListener('change', (e) => {
+      statusFilter = e.target.value;
+      renderContent();
+    });
+
+    // Auto-refresh every 5 seconds while loading, then every 60 seconds
+    let refreshInterval = setInterval(loadData, 5000);
+    
+    function updateRefreshInterval() {
+      if (dashboardData && !dashboardData.isLoading) {
+        clearInterval(refreshInterval);
+        refreshInterval = setInterval(loadData, 60000);
+      }
+    }
+
+    // Initial load
+    loadConfig();
+    loadData();
+  </script>
+</body>
+</html>
+
