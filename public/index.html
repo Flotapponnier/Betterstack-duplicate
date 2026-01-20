@@ -6,27 +6,27 @@
   <title>BetterStack Dashboard</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <style>
     :root {
-      --bg-primary: #0a0a0f;
-      --bg-secondary: #12121a;
-      --bg-card: #16161f;
-      --bg-hover: #1e1e2a;
-      --border: #2a2a3a;
-      --text-primary: #f0f0f5;
-      --text-secondary: #8888a0;
-      --text-muted: #5a5a70;
-      --accent: #6366f1;
-      --accent-glow: rgba(99, 102, 241, 0.3);
+      --bg-primary: #000000;
+      --bg-secondary: #0a0a0a;
+      --bg-card: #111111;
+      --bg-hover: #1a1a1a;
+      --border: #222222;
+      --text-primary: #ffffff;
+      --text-secondary: #888888;
+      --text-muted: #555555;
+      --accent: #ffffff;
+      --accent-glow: rgba(255, 255, 255, 0.1);
       --success: #22c55e;
-      --success-bg: rgba(34, 197, 94, 0.1);
+      --success-bg: rgba(34, 197, 94, 0.15);
       --danger: #ef4444;
-      --danger-bg: rgba(239, 68, 68, 0.1);
+      --danger-bg: rgba(239, 68, 68, 0.15);
       --warning: #f59e0b;
-      --warning-bg: rgba(245, 158, 11, 0.1);
+      --warning-bg: rgba(245, 158, 11, 0.15);
       --info: #3b82f6;
-      --info-bg: rgba(59, 130, 246, 0.1);
+      --info-bg: rgba(59, 130, 246, 0.15);
     }
 
     * {
@@ -36,13 +36,10 @@
     }
 
     body {
-      font-family: 'Outfit', sans-serif;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
       background: var(--bg-primary);
       color: var(--text-primary);
       min-height: 100vh;
-      background-image: 
-        radial-gradient(ellipse 80% 50% at 50% -20%, rgba(99, 102, 241, 0.15), transparent),
-        radial-gradient(ellipse 60% 40% at 100% 100%, rgba(139, 92, 246, 0.1), transparent);
     }
 
     .container {
@@ -67,21 +64,18 @@
     }
 
     .logo h1 {
-      font-size: 1.75rem;
-      font-weight: 700;
-      background: linear-gradient(135deg, var(--text-primary), var(--accent));
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      background-clip: text;
+      font-size: 1.5rem;
+      font-weight: 600;
+      color: var(--text-primary);
     }
 
     .logo-badge {
-      background: var(--accent);
-      color: white;
+      background: var(--border);
+      color: var(--text-secondary);
       padding: 0.25rem 0.75rem;
-      border-radius: 999px;
-      font-size: 0.75rem;
-      font-weight: 600;
+      border-radius: 4px;
+      font-size: 0.7rem;
+      font-weight: 500;
       text-transform: uppercase;
       letter-spacing: 0.05em;
     }
@@ -93,9 +87,8 @@
     }
 
     .last-updated {
-      font-size: 0.875rem;
+      font-size: 0.8rem;
       color: var(--text-secondary);
-      font-family: 'JetBrains Mono', monospace;
     }
 
     .refresh-btn {
@@ -115,7 +108,7 @@
 
     .refresh-btn:hover {
       background: var(--bg-hover);
-      border-color: var(--accent);
+      border-color: var(--text-secondary);
     }
 
     .refresh-btn.loading svg {
@@ -137,25 +130,14 @@
     .stat-card {
       background: var(--bg-card);
       border: 1px solid var(--border);
-      border-radius: 1rem;
-      padding: 1.5rem;
+      border-radius: 8px;
+      padding: 1.25rem;
       position: relative;
-      overflow: hidden;
     }
 
-    .stat-card::before {
-      content: '';
-      position: absolute;
-      top: 0;
-      left: 0;
-      right: 0;
-      height: 3px;
-      background: var(--accent);
-    }
-
-    .stat-card.success::before { background: var(--success); }
-    .stat-card.danger::before { background: var(--danger); }
-    .stat-card.warning::before { background: var(--warning); }
+    .stat-card.success { border-left: 3px solid var(--success); }
+    .stat-card.danger { border-left: 3px solid var(--danger); }
+    .stat-card.warning { border-left: 3px solid var(--warning); }
 
     .stat-label {
       font-size: 0.875rem;
@@ -166,9 +148,8 @@
     }
 
     .stat-value {
-      font-size: 2.5rem;
-      font-weight: 700;
-      font-family: 'JetBrains Mono', monospace;
+      font-size: 2rem;
+      font-weight: 600;
     }
 
     .stat-card.success .stat-value { color: var(--success); }
@@ -211,20 +192,19 @@
     }
 
     .tab.active {
-      background: var(--accent);
-      color: white;
+      background: var(--text-primary);
+      color: var(--bg-primary);
     }
 
     .tab-badge {
-      background: rgba(255,255,255,0.2);
+      background: rgba(255,255,255,0.15);
       padding: 0.125rem 0.5rem;
-      border-radius: 999px;
-      font-size: 0.75rem;
-      font-family: 'JetBrains Mono', monospace;
+      border-radius: 4px;
+      font-size: 0.7rem;
     }
 
     .tab.active .tab-badge {
-      background: rgba(255,255,255,0.3);
+      background: rgba(0,0,0,0.2);
     }
 
     .search-filter {
@@ -246,8 +226,7 @@
 
     .search-input:focus {
       outline: none;
-      border-color: var(--accent);
-      box-shadow: 0 0 0 3px var(--accent-glow);
+      border-color: var(--text-secondary);
     }
 
     .filter-select {
@@ -271,16 +250,14 @@
     .monitor-card {
       background: var(--bg-card);
       border: 1px solid var(--border);
-      border-radius: 0.75rem;
-      padding: 1.25rem;
-      transition: all 0.2s;
+      border-radius: 6px;
+      padding: 1rem;
+      transition: all 0.15s;
       cursor: pointer;
     }
 
     .monitor-card:hover {
-      border-color: var(--accent);
-      transform: translateY(-2px);
-      box-shadow: 0 8px 30px rgba(0,0,0,0.3);
+      border-color: var(--text-muted);
     }
 
     .monitor-header {
@@ -346,14 +323,13 @@
     }
 
     .monitor-url {
-      font-family: 'JetBrains Mono', monospace;
-      font-size: 0.8rem;
+      font-size: 0.75rem;
       color: var(--text-muted);
       word-break: break-all;
       margin-bottom: 0.75rem;
       padding: 0.5rem;
       background: var(--bg-secondary);
-      border-radius: 0.375rem;
+      border-radius: 4px;
     }
 
     .monitor-meta {
@@ -385,10 +361,9 @@
     }
 
     .section-badge {
-      font-size: 0.75rem;
-      padding: 0.25rem 0.75rem;
-      border-radius: 999px;
-      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.7rem;
+      padding: 0.25rem 0.6rem;
+      border-radius: 4px;
     }
 
     .section-badge.production {
@@ -411,10 +386,10 @@
     }
 
     .loading-spinner {
-      width: 48px;
-      height: 48px;
-      border: 3px solid var(--border);
-      border-top-color: var(--accent);
+      width: 32px;
+      height: 32px;
+      border: 2px solid var(--border);
+      border-top-color: var(--text-primary);
       border-radius: 50%;
       animation: spin 1s linear infinite;
       margin-bottom: 1rem;
@@ -438,7 +413,7 @@
     .incident-card {
       background: var(--bg-card);
       border: 1px solid var(--border);
-      border-radius: 0.75rem;
+      border-radius: 6px;
       padding: 1rem;
     }
 
@@ -516,11 +491,10 @@
     .incident-cause {
       background: var(--bg-secondary);
       padding: 0.75rem;
-      border-radius: 0.5rem;
-      font-size: 0.85rem;
+      border-radius: 4px;
+      font-size: 0.8rem;
       color: var(--text-secondary);
       margin: 0.75rem 0;
-      font-family: 'JetBrains Mono', monospace;
     }
 
     .incident-status.started {
@@ -544,9 +518,8 @@
     }
 
     .incident-meta {
-      font-size: 0.8rem;
+      font-size: 0.75rem;
       color: var(--text-muted);
-      font-family: 'JetBrains Mono', monospace;
       display: flex;
       flex-wrap: wrap;
       gap: 1rem;
@@ -584,12 +557,12 @@
       margin-bottom: 0.25rem;
       padding: 0.5rem;
       background: var(--bg-card);
-      border-radius: 0.5rem;
+      border-radius: 4px;
       border: 1px solid var(--border);
     }
 
     .heatmap-row:hover {
-      border-color: var(--accent);
+      border-color: var(--text-muted);
     }
 
     .heatmap-name {
@@ -650,7 +623,7 @@
       margin-bottom: 1.5rem;
       padding: 1rem;
       background: var(--bg-card);
-      border-radius: 0.5rem;
+      border-radius: 4px;
       border: 1px solid var(--border);
     }
 
