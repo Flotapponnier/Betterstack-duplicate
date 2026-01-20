@@ -6,20 +6,16 @@
   <title>Login - BetterStack Dashboard</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <style>
     :root {
-      --bg-primary: #0a0a0f;
-      --bg-secondary: #12121a;
-      --bg-card: #16161f;
-      --bg-hover: #1e1e2a;
-      --border: #2a2a3a;
-      --text-primary: #f0f0f5;
-      --text-secondary: #8888a0;
-      --text-muted: #5a5a70;
-      --accent: #6366f1;
-      --accent-glow: rgba(99, 102, 241, 0.3);
-      --success: #22c55e;
+      --bg-primary: #000000;
+      --bg-secondary: #0a0a0a;
+      --bg-card: #111111;
+      --border: #222222;
+      --text-primary: #ffffff;
+      --text-secondary: #888888;
+      --text-muted: #555555;
       --danger: #ef4444;
     }
 
@@ -30,30 +26,26 @@
     }
 
     body {
-      font-family: 'Outfit', sans-serif;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
       background: var(--bg-primary);
       color: var(--text-primary);
       min-height: 100vh;
       display: flex;
       align-items: center;
       justify-content: center;
-      background-image: 
-        radial-gradient(ellipse 80% 50% at 50% -20%, rgba(99, 102, 241, 0.15), transparent),
-        radial-gradient(ellipse 60% 40% at 100% 100%, rgba(139, 92, 246, 0.1), transparent);
     }
 
     .login-container {
       width: 100%;
-      max-width: 420px;
+      max-width: 380px;
       padding: 2rem;
     }
 
     .login-card {
       background: var(--bg-card);
       border: 1px solid var(--border);
-      border-radius: 1.5rem;
-      padding: 2.5rem;
-      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+      border-radius: 8px;
+      padding: 2rem;
     }
 
     .login-header {
@@ -62,27 +54,24 @@
     }
 
     .login-logo {
-      font-size: 2rem;
-      font-weight: 700;
-      background: linear-gradient(135deg, var(--text-primary), var(--accent));
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      background-clip: text;
+      font-size: 1.5rem;
+      font-weight: 600;
+      color: var(--text-primary);
       margin-bottom: 0.5rem;
     }
 
     .login-subtitle {
       color: var(--text-secondary);
-      font-size: 0.95rem;
+      font-size: 0.85rem;
     }
 
     .form-group {
-      margin-bottom: 1.5rem;
+      margin-bottom: 1.25rem;
     }
 
     .form-label {
       display: block;
-      font-size: 0.875rem;
+      font-size: 0.8rem;
       font-weight: 500;
       color: var(--text-secondary);
       margin-bottom: 0.5rem;
@@ -95,17 +84,16 @@
       background: var(--bg-secondary);
       border: 1px solid var(--border);
       color: var(--text-primary);
-      padding: 0.875rem 1rem;
-      border-radius: 0.75rem;
-      font-family: 'JetBrains Mono', monospace;
-      font-size: 1rem;
-      transition: all 0.2s;
+      padding: 0.75rem 1rem;
+      border-radius: 6px;
+      font-family: inherit;
+      font-size: 0.9rem;
+      transition: border-color 0.15s;
     }
 
     .form-input:focus {
       outline: none;
-      border-color: var(--accent);
-      box-shadow: 0 0 0 3px var(--accent-glow);
+      border-color: var(--text-secondary);
     }
 
     .form-input::placeholder {
@@ -114,16 +102,16 @@
 
     .login-btn {
       width: 100%;
-      background: var(--accent);
-      color: white;
+      background: var(--text-primary);
+      color: var(--bg-primary);
       border: none;
-      padding: 1rem;
-      border-radius: 0.75rem;
+      padding: 0.875rem;
+      border-radius: 6px;
       font-family: inherit;
-      font-size: 1rem;
-      font-weight: 600;
+      font-size: 0.9rem;
+      font-weight: 500;
       cursor: pointer;
-      transition: all 0.2s;
+      transition: opacity 0.15s;
       display: flex;
       align-items: center;
       justify-content: center;
@@ -131,46 +119,32 @@
     }
 
     .login-btn:hover {
-      background: #5558e3;
-      transform: translateY(-2px);
-      box-shadow: 0 10px 20px rgba(99, 102, 241, 0.3);
-    }
-
-    .login-btn:active {
-      transform: translateY(0);
+      opacity: 0.9;
     }
 
     .login-btn:disabled {
-      opacity: 0.7;
+      opacity: 0.5;
       cursor: not-allowed;
-      transform: none;
     }
 
     .login-btn svg {
-      width: 20px;
-      height: 20px;
+      width: 18px;
+      height: 18px;
     }
 
     .error-message {
       background: rgba(239, 68, 68, 0.1);
       border: 1px solid var(--danger);
       color: var(--danger);
-      padding: 0.875rem 1rem;
-      border-radius: 0.75rem;
-      font-size: 0.875rem;
-      margin-bottom: 1.5rem;
+      padding: 0.75rem 1rem;
+      border-radius: 6px;
+      font-size: 0.8rem;
+      margin-bottom: 1.25rem;
       display: none;
     }
 
     .error-message.show {
       display: block;
-      animation: shake 0.5s ease-in-out;
-    }
-
-    @keyframes shake {
-      0%, 100% { transform: translateX(0); }
-      25% { transform: translateX(-5px); }
-      75% { transform: translateX(5px); }
     }
 
     .security-badge {
@@ -182,19 +156,19 @@
       padding-top: 1.5rem;
       border-top: 1px solid var(--border);
       color: var(--text-muted);
-      font-size: 0.8rem;
+      font-size: 0.75rem;
     }
 
     .security-badge svg {
-      width: 16px;
-      height: 16px;
+      width: 14px;
+      height: 14px;
     }
 
     .spinner {
-      width: 20px;
-      height: 20px;
-      border: 2px solid rgba(255,255,255,0.3);
-      border-top-color: white;
+      width: 18px;
+      height: 18px;
+      border: 2px solid rgba(0,0,0,0.2);
+      border-top-color: var(--bg-primary);
       border-radius: 50%;
       animation: spin 0.8s linear infinite;
     }
@@ -209,7 +183,7 @@
     <div class="login-card">
       <div class="login-header">
         <h1 class="login-logo">Status Dashboard</h1>
-        <p class="login-subtitle">Enter your credentials to access the dashboard</p>
+        <p class="login-subtitle">Enter your credentials to continue</p>
       </div>
 
       <div class="error-message" id="errorMessage">
@@ -272,7 +246,6 @@
       const username = document.getElementById('username').value;
       const password = document.getElementById('password').value;
 
-      // Hide error and show loading
       errorMessage.classList.remove('show');
       loginBtn.disabled = true;
       loginBtn.innerHTML = '<div class="spinner"></div> Signing in...';
@@ -289,7 +262,6 @@
         const data = await response.json();
 
         if (data.success) {
-          // Redirect to dashboard
           window.location.href = '/';
         } else {
           throw new Error(data.message || 'Login failed');
@@ -307,7 +279,6 @@
       }
     });
 
-    // Focus username on load
     document.getElementById('username').focus();
   </script>
 </body>
