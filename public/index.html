@@ -2041,7 +2041,7 @@
         <div class="heartbeats-grid">
           ${heartbeatsData.map(hb => {
             const statusClass = hb.status === 'up' ? '' : (hb.paused ? 'paused' : 'down');
-            const statusIcon = hb.status === 'up' ? '🟢' : (hb.paused ? '⏸️' : '🔴');
+            const statusIcon = hb.status === 'up' ? '[UP]' : (hb.paused ? '[PAUSED]' : '[DOWN]');
             const periodStr = formatPeriod(hb.period);
             const graceStr = formatPeriod(hb.grace);
             
@@ -2053,7 +2053,7 @@
                     </div>
                 <div class="heartbeat-meta">
                   <div class="heartbeat-meta-item">
-                    <span>⏱️</span>
+                    <span>Period:</span>
                     <span>Expected every ${periodStr}</span>
                   </div>
                   <div class="heartbeat-meta-item">
@@ -2183,7 +2183,7 @@
 
       const loadingText = slaLoadingState.loading 
         ? `⏳ Loading ${slaLoadingState.loaded}/${slaLoadingState.total}...` 
-        : `✅ Loaded ${slaLoadedData.length} monitors`;
+        : `Loaded ${slaLoadedData.length} monitors`;
 
       const today = new Date().toISOString().split('T')[0];
       const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
@@ -2395,7 +2395,7 @@
 
       const loadingText = rtLoadingState.loading 
         ? `⏳ Loading ${rtLoadingState.loaded}/${rtLoadingState.total}...` 
-        : `✅ Loaded ${loadedMonitors.length}/${monitors.length} monitors`;
+        : `Loaded ${loadedMonitors.length}/${monitors.length} monitors`;
 
       content.innerHTML = `
         <div class="response-times-container">
@@ -2419,7 +2419,7 @@
           </div>
 
           <p style="color: var(--text-secondary); margin-bottom: 1rem;">
-            📊 Response times (last 24h) - ${loadingText} | Sorted slowest first
+            Response times (last 24h) - ${loadingText} | Sorted slowest first
           </p>
 
           <div class="monitors-grid">
